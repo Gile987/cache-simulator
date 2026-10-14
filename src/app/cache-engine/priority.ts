@@ -1,4 +1,4 @@
-import { CacheEntry, Strategy } from './models';
+import type { CacheEntry, Strategy } from './models';
 import { assertNever } from './assert-never';
 
 function compareKeys(a: string, b: string): number {

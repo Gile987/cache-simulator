@@ -1,5 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
-import { CacheEntry, EngineCommand, EngineSnapshot, ValidationIssue } from './cache-engine/models';
+import type {
+  CacheEntry,
+  EngineCommand,
+  EngineSnapshot,
+  ValidationIssue,
+} from './cache-engine/models';
 import { createInitialState, describeEvent, hitRate, runCommand } from './cache-engine/engine';
 import type { CommandOutcome } from './cache-engine/engine';
 import { assertNever } from './cache-engine/assert-never';

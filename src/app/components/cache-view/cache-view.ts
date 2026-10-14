@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { CacheEntry, CacheState } from '../../cache-engine/models';
+import type { CacheEntry, CacheState } from '../../cache-engine/models';
 import { usedCapacity } from '../../cache-engine/engine';
 import { assertNever } from '../../cache-engine/assert-never';
 
