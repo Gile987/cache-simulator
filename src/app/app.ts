@@ -1,11 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
-import {
-  CacheEntry,
-  CacheState,
-  EngineCommand,
-  EngineSnapshot,
-  ValidationIssue,
-} from './cache-engine/models';
+import { CacheEntry, EngineCommand, EngineSnapshot, ValidationIssue } from './cache-engine/models';
 import {
   createInitialState,
   describeEvent,
@@ -13,6 +7,7 @@ import {
   runCommand,
   usedCapacity,
 } from './cache-engine/engine';
+import type { CommandOutcome } from './cache-engine/engine';
 import { priorityOrder } from './cache-engine/priority';
 import { GUIDED_CAPACITY, GUIDED_STEPS } from './cache-engine/guided-example';
 import { parseIntegerField, validateKey } from './cache-engine/validation';
@@ -95,7 +90,7 @@ export class App {
         break;
       case 'setStrategy':
         if (this.applyCapacity()) {
-          this.apply({ type: 'setStrategy', strategy: request.strategy });
+          this.execute({ type: 'setStrategy', strategy: request.strategy });
         }
         break;
       case 'setCapacity':
@@ -131,7 +126,8 @@ export class App {
       return;
     }
 
-    if (this.apply({ type: 'add', key: drafts.itemKey, size: sizeResult.value })) {
+    const outcome = this.execute({ type: 'add', key: drafts.itemKey, size: sizeResult.value });
+    if (outcome.ok) {
       this.drafts.update((drafts) => ({ ...drafts, itemKey: '', itemSize: '' }));
     }
   }
@@ -141,8 +137,8 @@ export class App {
       return;
     }
     this.errors.update((errors) => ({ ...errors, access: null }));
-    const accepted = this.apply({ type: 'access', key: key ?? this.drafts().accessKey });
-    if (accepted && key === undefined) {
+    const outcome = this.execute({ type: 'access', key: key ?? this.drafts().accessKey });
+    if (outcome.ok && key === undefined) {
       this.drafts.update((drafts) => ({ ...drafts, accessKey: '' }));
     }
   }
@@ -160,18 +156,21 @@ export class App {
       }));
       return false;
     }
-    return this.apply({ type: 'setCapacity', capacity: result.value });
+    return this.execute({ type: 'setCapacity', capacity: result.value }).ok;
   }
 
   protected reset(): void {
-    const outcome = this.run({ type: 'reset' });
+    const outcome = this.execute({ type: 'reset' });
+    if (!outcome.ok) {
+      return;
+    }
     this.exampleActive.set(false);
     this.exampleCursor.set(0);
     this.drafts.set({
       itemKey: '',
       itemSize: '',
       accessKey: '',
-      capacity: String(outcome.capacity),
+      capacity: String(outcome.snapshot.state.capacity),
     });
     this.clearErrors();
     this.statusMessage.set('Simulation reset. Manual playground ready.');
@@ -195,8 +194,9 @@ export class App {
     if (step === undefined) {
       return;
     }
-    this.apply(step.command);
-    if (this.exampleActive()) {
+    this.clearErrors();
+    const outcome = this.execute(step.command);
+    if (outcome.ok) {
       this.exampleCursor.update((cursor) => cursor + 1);
     }
   }
@@ -214,30 +214,17 @@ export class App {
     return 'pending';
   }
 
-  private run(command: EngineCommand): CacheState {
-    const snapshot = this.snapshot();
-    const result = runCommand(snapshot, command);
-    this.snapshot.set(result.snapshot);
-    const event = result.snapshot.events[0];
-    if (event !== undefined) {
-      this.statusMessage.set(describeEvent(event));
-    }
-    return result.snapshot.state;
-  }
-
-  private apply(command: EngineCommand): boolean {
-    const snapshot = this.snapshot();
-    const result = runCommand(snapshot, command);
-    if (result.issues.length > 0) {
+  private execute(command: EngineCommand): CommandOutcome {
+    const result = runCommand(this.snapshot(), command);
+    if (!result.ok) {
       this.routeIssues(result.issues);
-      return false;
+      return result;
     }
     this.snapshot.set(result.snapshot);
-    const event = result.snapshot.events[0];
-    if (event !== undefined) {
-      this.statusMessage.set(describeEvent(event));
+    if (result.event !== null) {
+      this.statusMessage.set(describeEvent(result.event));
     }
-    return true;
+    return result;
   }
 
   private routeIssues(issues: readonly ValidationIssue[]): void {

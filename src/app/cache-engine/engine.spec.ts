@@ -12,7 +12,10 @@ function runAll(
   let snapshot: EngineSnapshot = { state: createInitialState(strategy, capacity), events: [] };
   for (const command of commands) {
     const outcome = runCommand(snapshot, command);
-    expect(outcome.issues).toEqual([]);
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) {
+      throw new Error(JSON.stringify(outcome.issues));
+    }
     snapshot = outcome.snapshot;
   }
   return snapshot;
@@ -173,6 +176,10 @@ describe('validation', () => {
     const before = runAll([{ type: 'add', key: 'A', size: 3 }]);
     const level: EngineSnapshot = { state: before.state, events: before.events };
     const outcome = runCommand(level, command);
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) {
+      throw new Error('Expected command rejection');
+    }
     expect(outcome.issues.length).toBeGreaterThan(0);
     expect(outcome.snapshot).toBe(level);
     expect(outcome.snapshot.state.step).toBe(before.state.step);
@@ -329,6 +336,7 @@ describe('reset and immutability', () => {
   it('clears state but keeps strategy and capacity on reset', () => {
     const before = runAll([{ type: 'add', key: 'A', size: 3 }], 'LFU', 12);
     const outcome = runCommand(before, { type: 'reset' });
+    expect(outcome).toMatchObject({ ok: true, event: null });
     expect(outcome.snapshot.state.entries).toEqual([]);
     expect(outcome.snapshot.state.step).toBe(0);
     expect(outcome.snapshot.state.hits).toBe(0);
@@ -394,6 +402,86 @@ describe('guided example', () => {
       expect(hitRate(snapshot.state)).toBe(1);
       expect(snapshot.state.evictions).toBe(1);
       expect(usedCapacity(snapshot.state)).toBe(10);
+    },
+  );
+});
+
+describe('command outcomes', () => {
+  it('returns only the newly produced event when the history is already capped', () => {
+    const before = runAll(
+      Array.from({ length: 51 }, (_, index): EngineCommand => ({
+        type: 'access',
+        key: `missing-${index}`,
+      })),
+    );
+    const outcome = runCommand(before, { type: 'add', key: 'A', size: 3 });
+
+    expect(outcome).toMatchObject({
+      ok: true,
+      event: { kind: 'insert', key: 'A', step: 52 },
+    });
+    expect(outcome.snapshot.events).toHaveLength(50);
+    if (!outcome.ok) {
+      throw new Error('Expected command success');
+    }
+    expect(outcome.event).toBe(outcome.snapshot.events[0]);
+    expect(before.events[0]?.step).toBe(51);
+  });
+
+  it('returns no event for an accepted strategy no-op with existing history', () => {
+    const before = runAll([{ type: 'add', key: 'A', size: 3 }]);
+    const outcome = runCommand(before, { type: 'setStrategy', strategy: 'FIFO' });
+
+    expect(outcome).toMatchObject({ ok: true, event: null });
+    expect(outcome.snapshot.state).toBe(before.state);
+    expect(outcome.snapshot.events).toBe(before.events);
+  });
+
+  it('reports successful capacity application without producing an event', () => {
+    const before: EngineSnapshot = { state: createInitialState(), events: [] };
+    const outcome = runCommand(before, { type: 'setCapacity', capacity: 20 });
+
+    expect(outcome).toMatchObject({ ok: true, event: null });
+    expect(outcome.snapshot.state.capacity).toBe(20);
+    expect(outcome.snapshot.state.step).toBe(0);
+    expect(outcome.snapshot.events).toBe(before.events);
+    expect(before.state.capacity).toBe(10);
+  });
+
+  it.each([
+    { type: 'add', key: 'A', size: 3 },
+    { type: 'add', key: 'C', size: 11 },
+    { type: 'access', key: '' },
+  ] satisfies readonly EngineCommand[])(
+    'reports rejection without mutating a frozen snapshot and permits recovery (%o)',
+    (command) => {
+      const initial = runAll([
+        { type: 'add', key: 'A', size: 5 },
+        { type: 'add', key: 'B', size: 5 },
+      ]);
+      const before: EngineSnapshot = Object.freeze({
+        state: Object.freeze({
+          ...initial.state,
+          entries: Object.freeze(initial.state.entries.map((entry) => Object.freeze(entry))),
+        }),
+        events: Object.freeze(initial.events),
+      });
+      const saved = structuredClone(before);
+      const outcome = runCommand(before, command);
+
+      expect(outcome).toMatchObject({ ok: false, issues: expect.any(Array) });
+      expect(outcome.snapshot).toBe(before);
+      expect(before).toEqual(saved);
+      expect(before.state.evictions).toBe(0);
+
+      const recovered = runCommand(outcome.snapshot, { type: 'access', key: 'A' });
+      expect(recovered).toMatchObject({
+        ok: true,
+        event: { kind: 'access', key: 'A', result: 'hit', step: 3 },
+      });
+      expect(recovered.snapshot.state.hits).toBe(1);
+      expect(recovered.snapshot.events).toHaveLength(3);
+      expect(before).toEqual(saved);
     },
   );
 });

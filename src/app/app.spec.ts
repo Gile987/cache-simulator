@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './app';
+import * as engine from './cache-engine/engine';
 
 function requireElement<T extends Element>(root: HTMLElement, selector: string): T {
   const element = root.querySelector(selector);
@@ -56,6 +57,10 @@ describe('App', () => {
     fixture = TestBed.createComponent(App);
     root = fixture.nativeElement as HTMLElement;
     fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('renders the playground heading and an empty state', () => {
@@ -546,5 +551,67 @@ describe('App', () => {
     expect(finalEvent).toContain('Step 8');
     expect(finalEvent).toContain('Evicted B');
     expect(requireElement(root, '[data-testid="usage"]').textContent).toContain('10 / 10');
+  });
+
+  it('does not announce an old event when reselecting the active strategy', () => {
+    prepareOperation(root);
+    clickButton(root, '[data-testid="add-button"]');
+    fixture.detectChanges();
+    const status = requireElement(root, '[data-testid="status"]').textContent;
+    const announce = vi.spyOn(fixture.componentInstance['statusMessage'], 'set');
+    const select = requireElement<HTMLSelectElement>(root, '#strategy');
+
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    expect(announce).not.toHaveBeenCalled();
+    expect(requireElement(root, '[data-testid="status"]').textContent).toBe(status);
+    expect(root.querySelectorAll('[data-testid="event-list"] > li')).toHaveLength(1);
+  });
+
+  it('retains a rejected guided step and completes it on a successful retry', () => {
+    clickButton(root, '[data-testid="load-example-button"]');
+    fixture.detectChanges();
+    for (let index = 0; index < 7; index += 1) {
+      clickButton(root, '[data-testid="next-step-button"]');
+      fixture.detectChanges();
+    }
+    const status = requireElement(root, '[data-testid="status"]').textContent;
+    const saved = fixture.componentInstance['snapshot']();
+    const conflicting = engine.runCommand(saved, { type: 'add', key: 'D', size: 1 }).snapshot;
+    fixture.componentInstance['snapshot'].set(conflicting);
+    fixture.detectChanges();
+    const announce = vi.spyOn(fixture.componentInstance['statusMessage'], 'set');
+
+    clickButton(root, '[data-testid="next-step-button"]');
+    fixture.detectChanges();
+
+    expect(root.querySelector('[data-testid="example-complete"]')).toBeNull();
+    expect(
+      requireElement<HTMLButtonElement>(root, '[data-testid="next-step-button"]').disabled,
+    ).toBe(false);
+    expect(
+      requireElement(root, '[data-testid="example-steps"] > li:last-child').getAttribute(
+        'data-status',
+      ),
+    ).toBe('next');
+    expect(root.querySelectorAll('[data-testid="event-list"] > li')).toHaveLength(8);
+    expect(requireElement(root, '[data-testid="usage"]').textContent).toContain('10 / 10');
+    expect(fixture.componentInstance['snapshot']()).toBe(conflicting);
+    expect(root.querySelector('.error')?.textContent).toContain('already in the cache');
+    expect(requireElement(root, '[data-testid="status"]').textContent).toBe(status);
+    expect(announce).not.toHaveBeenCalled();
+
+    fixture.componentInstance['snapshot'].set(saved);
+    clickButton(root, '[data-testid="next-step-button"]');
+    fixture.detectChanges();
+
+    expect(root.querySelector('[data-testid="example-complete"]')).not.toBeNull();
+    expect(root.querySelector('.error')).toBeNull();
+    expect(root.querySelectorAll('[data-testid="event-list"] > li')).toHaveLength(8);
+    expect(requireElement(root, '[data-testid="usage"]').textContent).toContain('10 / 10');
+    expect(requireElement(root, '[data-testid="hits"]').textContent?.trim()).toBe('4');
+    expect(announce).toHaveBeenCalledOnce();
+    expect(requireElement(root, '[data-testid="status"]').textContent).toContain('Added "D"');
   });
 });
