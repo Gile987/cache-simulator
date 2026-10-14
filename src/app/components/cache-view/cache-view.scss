@@ -97,6 +97,25 @@ h3 {
   word-break: break-word;
 }
 
+button.ghost {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-strong);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+button.ghost:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+button.ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .meta {
   display: grid;
   grid-template-columns: 1fr 1fr;
