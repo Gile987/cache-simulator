@@ -1,4 +1,5 @@
 import { CacheEntry, Strategy } from './models';
+import { assertNever } from './assert-never';
 
 function compareKeys(a: string, b: string): number {
   if (a < b) {
@@ -11,22 +12,25 @@ function compareKeys(a: string, b: string): number {
 }
 
 export function comparePriority(strategy: Strategy, a: CacheEntry, b: CacheEntry): number {
-  if (strategy === 'FIFO') {
-    return a.insertionStep - b.insertionStep || compareKeys(a.key, b.key);
+  switch (strategy) {
+    case 'FIFO':
+      return a.insertionStep - b.insertionStep || compareKeys(a.key, b.key);
+    case 'LRU':
+      return (
+        a.lastAccessStep - b.lastAccessStep ||
+        a.insertionStep - b.insertionStep ||
+        compareKeys(a.key, b.key)
+      );
+    case 'LFU':
+      return (
+        a.accessCount - b.accessCount ||
+        a.lastAccessStep - b.lastAccessStep ||
+        a.insertionStep - b.insertionStep ||
+        compareKeys(a.key, b.key)
+      );
+    default:
+      return assertNever(strategy);
   }
-  if (strategy === 'LRU') {
-    return (
-      a.lastAccessStep - b.lastAccessStep ||
-      a.insertionStep - b.insertionStep ||
-      compareKeys(a.key, b.key)
-    );
-  }
-  return (
-    a.accessCount - b.accessCount ||
-    a.lastAccessStep - b.lastAccessStep ||
-    a.insertionStep - b.insertionStep ||
-    compareKeys(a.key, b.key)
-  );
 }
 
 export function priorityOrder(
@@ -37,11 +41,14 @@ export function priorityOrder(
 }
 
 export function evictionReason(strategy: Strategy, entry: CacheEntry): string {
-  if (strategy === 'FIFO') {
-    return 'it was added before every other resident item';
+  switch (strategy) {
+    case 'FIFO':
+      return 'it was added before every other resident item';
+    case 'LRU':
+      return 'it was the least recently accessed item';
+    case 'LFU':
+      return `it had the fewest accesses (${entry.accessCount})`;
+    default:
+      return assertNever(strategy);
   }
-  if (strategy === 'LRU') {
-    return 'it was the least recently accessed item';
-  }
-  return `it had the fewest accesses (${entry.accessCount})`;
 }

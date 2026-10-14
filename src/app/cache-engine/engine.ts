@@ -13,6 +13,7 @@ import {
 } from './models';
 import { evictionReason, priorityOrder } from './priority';
 import { MAX_KEY_LENGTH, MAX_VALUE, MIN_VALUE, normalizeKey, validateKey } from './validation';
+import { assertNever } from './assert-never';
 
 export const MAX_EVENTS = 50;
 
@@ -198,19 +199,20 @@ function applyReset(state: CacheState): EngineResult {
 }
 
 export function applyCommand(state: CacheState, command: EngineCommand): EngineResult {
-  if (command.type === 'add') {
-    return applyAdd(state, command.key, command.size);
+  switch (command.type) {
+    case 'add':
+      return applyAdd(state, command.key, command.size);
+    case 'access':
+      return applyAccess(state, command.key);
+    case 'setStrategy':
+      return applyStrategy(state, command.strategy);
+    case 'setCapacity':
+      return applyCapacity(state, command.capacity);
+    case 'reset':
+      return applyReset(state);
+    default:
+      return assertNever(command);
   }
-  if (command.type === 'access') {
-    return applyAccess(state, command.key);
-  }
-  if (command.type === 'setStrategy') {
-    return applyStrategy(state, command.strategy);
-  }
-  if (command.type === 'setCapacity') {
-    return applyCapacity(state, command.capacity);
-  }
-  return applyReset(state);
 }
 
 export type CommandOutcome =
@@ -230,7 +232,20 @@ export function runCommand(snapshot: EngineSnapshot, command: EngineCommand): Co
   if (!result.ok) {
     return { ok: false, snapshot, issues: result.issues };
   }
-  const events = command.type === 'reset' ? [] : appendEvent(snapshot.events, result.event);
+  let events: readonly CacheEvent[];
+  switch (command.type) {
+    case 'add':
+    case 'access':
+    case 'setStrategy':
+    case 'setCapacity':
+      events = appendEvent(snapshot.events, result.event);
+      break;
+    case 'reset':
+      events = [];
+      break;
+    default:
+      return assertNever(command);
+  }
   return {
     ok: true,
     snapshot: { state: result.state, events },
@@ -239,22 +254,31 @@ export function runCommand(snapshot: EngineSnapshot, command: EngineCommand): Co
 }
 
 export function describeEvent(event: CacheEvent): string {
-  if (event.kind === 'access') {
-    const outcome = event.result === 'hit' ? 'hit' : 'miss';
-    return `Access "${event.key}": ${outcome}. Usage: ${event.used} / ${event.capacity}.`;
+  switch (event.kind) {
+    case 'access':
+      switch (event.result) {
+        case 'hit':
+        case 'miss':
+          return `Access "${event.key}": ${event.result}. Usage: ${event.used} / ${event.capacity}.`;
+        default:
+          return assertNever(event.result);
+      }
+    case 'strategy':
+      return `Strategy changed from ${event.from} to ${event.to}.`;
+    case 'insert': {
+      const unit = (size: number): string => (size === 1 ? 'unit' : 'units');
+      const evictionText =
+        event.evictions.length === 0
+          ? 'No eviction was needed.'
+          : event.evictions
+              .map(
+                (eviction) =>
+                  `Evicted "${eviction.key}" (${eviction.size} ${unit(eviction.size)}) because ${eviction.reason}.`,
+              )
+              .join(' ');
+      return `Added "${event.key}" (${event.size} ${unit(event.size)}). ${evictionText} Usage: ${event.used} / ${event.capacity}.`;
+    }
+    default:
+      return assertNever(event);
   }
-  if (event.kind === 'strategy') {
-    return `Strategy changed from ${event.from} to ${event.to}.`;
-  }
-  const unit = (size: number): string => (size === 1 ? 'unit' : 'units');
-  const evictionText =
-    event.evictions.length === 0
-      ? 'No eviction was needed.'
-      : event.evictions
-          .map(
-            (eviction) =>
-              `Evicted "${eviction.key}" (${eviction.size} ${unit(eviction.size)}) because ${eviction.reason}.`,
-          )
-          .join(' ');
-  return `Added "${event.key}" (${event.size} ${unit(event.size)}). ${evictionText} Usage: ${event.used} / ${event.capacity}.`;
 }

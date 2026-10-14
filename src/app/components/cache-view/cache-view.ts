@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { CacheEntry, CacheState } from '../../cache-engine/models';
 import { usedCapacity } from '../../cache-engine/engine';
+import { assertNever } from '../../cache-engine/assert-never';
 
 interface Segment {
   readonly key: string;
@@ -40,12 +41,15 @@ export class CacheView {
 
   protected metric(entry: CacheEntry): string {
     const strategy = this.state().strategy;
-    if (strategy === 'FIFO') {
-      return `inserted step ${entry.insertionStep}`;
+    switch (strategy) {
+      case 'FIFO':
+        return `inserted step ${entry.insertionStep}`;
+      case 'LRU':
+        return `last access step ${entry.lastAccessStep}`;
+      case 'LFU':
+        return `${entry.accessCount} ${entry.accessCount === 1 ? 'access' : 'accesses'}`;
+      default:
+        return assertNever(strategy);
     }
-    if (strategy === 'LRU') {
-      return `last access step ${entry.lastAccessStep}`;
-    }
-    return `${entry.accessCount} ${entry.accessCount === 1 ? 'access' : 'accesses'}`;
   }
 }

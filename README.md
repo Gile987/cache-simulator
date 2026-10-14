@@ -75,7 +75,7 @@ All engine commands, including Reset and guided steps, use one execution path in
 
 `npx ng test --watch=false` runs:
 
-- **Engine tests** — insertion without eviction, exact fits, multi-item eviction order, rejected operations leaving state untouched, hit/miss behavior, all three priority policies and their tie-breakers, fresh metadata after re-insertion, strategy switches, `__proto__` as an ordinary key, the guided example under every strategy, zero-access hit rate, capacity invariants, input immutability, the 50-event log cap, and explicit command outcomes with rejection recovery and event-free success.
+- **Engine tests** — insertion without eviction, exact fits, multi-item eviction order, rejected operations leaving state untouched, hit/miss behavior, all three priority policies and their tie-breakers, fresh metadata after re-insertion, strategy switches, `__proto__` as an ordinary key, the guided example under every strategy, zero-access hit rate, capacity invariants, input immutability, the 50-event log cap, explicit command outcomes with rejection recovery and event-free success, and unknown commands and strategies throwing without changing caller-owned state.
 - **UI tests** — controls-component requests, raw draft edits and input immutability, submission cancellation, disabled controls, and parent integration for add/access flows, field validation, capacity locking and reset, rejected-draft recovery, card access, no-op status handling, and the guided-example step controls including rejected-step retry.
 
 ### Manual browser checks
@@ -89,6 +89,7 @@ Browser checks are performed manually by the user; automated verification uses t
 5. Click Reset simulation. Expect empty entries and statistics, cleared drafts and errors, and an editable capacity retaining its last accepted value. Set capacity to `20` and leave the field, then enter `0` and attempt Add. Reset again and confirm capacity returns to `20`.
 6. Select LFU and click Load guided example. Expect capacity `10`, cleared errors, and disabled manual inputs and submit buttons with visible disabled styling. Advance all eight steps: expect B evicted, usage `10 / 10`, four hits, zero misses, and a disabled Next step button. Reset should restore enabled manual controls.
 7. After a successful Add, select the current strategy again. Expect no new event or step and the existing status to remain unchanged. Submit a duplicate key or an empty Access key: expect the appropriate field error while the previous successful status remains. Correct the draft and submit: expect one new event, cleared submitted fields, and a status describing that operation. Reset should clear the log and show the reset message.
+8. Run the guided example under FIFO, LRU, and LFU, resetting between runs. Confirm priority metrics show insertion steps for FIFO, last-access steps for LRU, and access counts for LFU. At the final step, FIFO and LRU should evict A and LFU should evict B. Check that insert, hit, miss, and strategy-change log messages and status descriptions still match their operations, and that key, size, Access, and capacity errors appear beside the appropriate controls.
 
 ## Design decisions
 
@@ -98,6 +99,7 @@ Browser checks are performed manually by the user; automated verification uses t
 - Signals with OnPush change detection and `@if`/`@for` with stable tracking keys keep rendering predictable.
 - Native HTML controls and SCSS avoid UI, chart, canvas, and animation dependencies.
 - Add and Access use separate native forms with Angular submit listeners that prevent page navigation. Signal drafts retain raw input strings for custom validation; `novalidate` lets the app show its own field errors for invalid numeric values.
+- Command dispatch, history handling, eviction policies, displayed priority metrics, event summaries, access results, control requests, and validation routing use exhaustive switches with a shared framework-free `assertNever` guard. Adding an unhandled union member produces a compiler error at its handler; unexpected runtime values throw instead of silently using Reset, LFU, or another existing branch. Cases that share behavior remain grouped.
 
 ## Limitations and deferred work
 

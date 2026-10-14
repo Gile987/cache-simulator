@@ -8,6 +8,7 @@ import {
   usedCapacity,
 } from './cache-engine/engine';
 import type { CommandOutcome } from './cache-engine/engine';
+import { assertNever } from './cache-engine/assert-never';
 import { priorityOrder } from './cache-engine/priority';
 import { GUIDED_CAPACITY, GUIDED_STEPS } from './cache-engine/guided-example';
 import { parseIntegerField, validateKey } from './cache-engine/validation';
@@ -102,6 +103,8 @@ export class App {
       case 'loadExample':
         this.loadExample();
         break;
+      default:
+        assertNever(request);
     }
   }
 
@@ -229,7 +232,17 @@ export class App {
 
   private routeIssues(issues: readonly ValidationIssue[]): void {
     for (const issue of issues) {
-      this.errors.update((errors) => ({ ...errors, [issue.field]: issue.message }));
+      const field = issue.field;
+      switch (field) {
+        case 'key':
+        case 'size':
+        case 'access':
+        case 'capacity':
+          this.errors.update((errors) => ({ ...errors, [field]: issue.message }));
+          break;
+        default:
+          assertNever(field);
+      }
     }
   }
 
