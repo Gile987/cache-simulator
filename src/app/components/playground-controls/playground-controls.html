@@ -23,8 +23,8 @@
       #capacityInput
       id="capacity"
       type="number"
-      min="1"
-      max="100"
+      [attr.min]="minValue"
+      [attr.max]="maxValue"
       step="1"
       inputmode="numeric"
       data-testid="capacity-input"
@@ -57,7 +57,7 @@
             #itemKeyInput
             id="item-key"
             type="text"
-            maxlength="40"
+            [attr.maxlength]="maxKeyLength"
             autocomplete="off"
             data-testid="item-key-input"
             [value]="drafts().itemKey"
@@ -76,8 +76,8 @@
             #itemSizeInput
             id="item-size"
             type="number"
-            min="1"
-            max="100"
+            [attr.min]="minValue"
+            [attr.max]="maxValue"
             step="1"
             inputmode="numeric"
             data-testid="item-size-input"
@@ -113,7 +113,7 @@
             #accessKeyInput
             id="access-key"
             type="text"
-            maxlength="40"
+            [attr.maxlength]="maxKeyLength"
             autocomplete="off"
             data-testid="access-key-input"
             [value]="drafts().accessKey"

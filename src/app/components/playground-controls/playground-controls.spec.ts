@@ -3,6 +3,8 @@ import type { ComponentFixture } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { PlaygroundControls } from './playground-controls';
 import type { ControlDrafts, ControlRequest, DraftChange } from './playground-controls';
+import { STRATEGIES } from '../../cache-engine/models';
+import { MAX_KEY_LENGTH, MAX_VALUE, MIN_VALUE } from '../../cache-engine/validation';
 
 function requireElement<T extends Element>(root: HTMLElement, selector: string): T {
   const element = root.querySelector(selector);
@@ -56,6 +58,20 @@ describe('PlaygroundControls', () => {
     expect(changes).toEqual([{ field, value }]);
     expect(fixture.componentInstance.drafts()).toBe(drafts);
     expect(requests).toEqual([]);
+  });
+
+  it('renders form limits and strategy options from the shared engine constants', () => {
+    for (const id of ['capacity', 'item-size']) {
+      const input = requireElement<HTMLInputElement>(root, `[data-testid="${id}-input"]`);
+      expect(input.getAttribute('min')).toBe(String(MIN_VALUE));
+      expect(input.getAttribute('max')).toBe(String(MAX_VALUE));
+    }
+    for (const id of ['item-key', 'access-key']) {
+      const input = requireElement<HTMLInputElement>(root, `[data-testid="${id}-input"]`);
+      expect(input.getAttribute('maxlength')).toBe(String(MAX_KEY_LENGTH));
+    }
+    const options = [...root.querySelectorAll<HTMLOptionElement>('#strategy option')];
+    expect(options.map((option) => option.value)).toEqual([...STRATEGIES]);
   });
 
   describe.each(['add', 'access'] as const)('%s form', (operation) => {
