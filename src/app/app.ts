@@ -79,6 +79,13 @@ export class App {
     if (strategy === undefined) {
       return;
     }
+    if (!this.applyCapacity()) {
+      const target = event.target;
+      if (target instanceof HTMLSelectElement) {
+        target.value = this.state().strategy;
+      }
+      return;
+    }
     this.apply({ type: 'setStrategy', strategy });
   }
 
@@ -99,7 +106,7 @@ export class App {
   }
 
   protected addItem(): void {
-    if (this.exampleActive()) {
+    if (this.exampleActive() || !this.applyCapacity()) {
       return;
     }
     this.addKeyError.set(null);
@@ -124,7 +131,7 @@ export class App {
   }
 
   protected accessItem(key?: string): void {
-    if (this.exampleActive()) {
+    if (this.exampleActive() || !this.applyCapacity()) {
       return;
     }
     this.accessError.set(null);
@@ -135,17 +142,18 @@ export class App {
     }
   }
 
-  protected applyCapacity(): void {
+  protected applyCapacity(): boolean {
     if (!this.canEditCapacity()) {
-      return;
+      return true;
     }
     this.capacityError.set(null);
     const result = parseIntegerField(this.capacityDraft(), 'capacity', 'Capacity');
     if (result.issue !== null || result.value === null) {
       this.capacityError.set(result.issue?.message ?? 'Capacity is invalid.');
-      return;
+      return false;
     }
     this.apply({ type: 'setCapacity', capacity: result.value });
+    return this.capacityError() === null;
   }
 
   protected reset(): void {
