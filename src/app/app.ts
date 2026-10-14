@@ -118,10 +118,10 @@ export class App {
 
     const drafts = this.drafts();
     const sizeResult = parseIntegerField(drafts.itemSize, 'size', 'Size');
-    if (sizeResult.issue !== null || sizeResult.value === null) {
+    if (!sizeResult.ok) {
       this.errors.update((errors) => ({
         ...errors,
-        size: sizeResult.issue?.message ?? 'Size is invalid.',
+        size: sizeResult.issue.message,
       }));
       return;
     }
@@ -153,10 +153,10 @@ export class App {
     }
     this.errors.update((errors) => ({ ...errors, capacity: null }));
     const result = parseIntegerField(this.drafts().capacity, 'capacity', 'Capacity');
-    if (result.issue !== null || result.value === null) {
+    if (!result.ok) {
       this.errors.update((errors) => ({
         ...errors,
-        capacity: result.issue?.message ?? 'Capacity is invalid.',
+        capacity: result.issue.message,
       }));
       return false;
     }

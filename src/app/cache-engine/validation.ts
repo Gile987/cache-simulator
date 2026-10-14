@@ -19,10 +19,9 @@ export function validateKey(raw: string): ValidationIssue | null {
   return null;
 }
 
-export interface IntegerParseResult {
-  readonly value: number | null;
-  readonly issue: ValidationIssue | null;
-}
+export type IntegerParseResult =
+  | { readonly ok: true; readonly value: number }
+  | { readonly ok: false; readonly issue: ValidationIssue };
 
 export function parseIntegerField(
   raw: string,
@@ -33,17 +32,17 @@ export function parseIntegerField(
 ): IntegerParseResult {
   const trimmed = raw.trim();
   if (trimmed.length === 0) {
-    return { value: null, issue: { field, message: `${label} is required.` } };
+    return { ok: false, issue: { field, message: `${label} is required.` } };
   }
   const value = Number(trimmed);
   if (!Number.isSafeInteger(value)) {
-    return { value: null, issue: { field, message: `${label} must be a whole number.` } };
+    return { ok: false, issue: { field, message: `${label} must be a whole number.` } };
   }
   if (value < min || value > max) {
     return {
-      value: null,
+      ok: false,
       issue: { field, message: `${label} must be between ${min} and ${max}.` },
     };
   }
-  return { value, issue: null };
+  return { ok: true, value };
 }
