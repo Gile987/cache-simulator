@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CacheEvent, CacheState, EngineCommand, EngineSnapshot, Strategy } from './models';
 import { applyCommand, createInitialState, hitRate, runCommand, usedCapacity } from './engine';
-import { priorityOrder } from './priority';
+import { comparePriority, priorityOrder } from './priority';
 import { GUIDED_CAPACITY, GUIDED_STEPS } from './guided-example';
 
 function runAll(
@@ -484,4 +484,44 @@ describe('command outcomes', () => {
       expect(before).toEqual(saved);
     },
   );
+});
+
+describe('unhandled union members', () => {
+  it('throws for an unknown command without resetting caller-owned state and allows a valid command afterward', () => {
+    const before = runAll([{ type: 'add', key: 'A', size: 3 }]);
+    const saved = structuredClone(before);
+
+    expect(() =>
+      Reflect.apply(applyCommand, undefined, [before.state, { type: 'unknown' }]),
+    ).toThrow();
+    expect(before).toEqual(saved);
+
+    const recovered = runCommand(before, { type: 'access', key: 'A' });
+    expect(recovered).toMatchObject({
+      ok: true,
+      event: { kind: 'access', result: 'hit', step: 2 },
+    });
+    expect(recovered.snapshot.state.entries).toHaveLength(1);
+    expect(before).toEqual(saved);
+  });
+
+  it('throws for an unknown strategy instead of applying LFU and preserves valid priority behavior', () => {
+    const before = runAll([
+      { type: 'add', key: 'A', size: 3 },
+      { type: 'add', key: 'B', size: 3 },
+      { type: 'access', key: 'A' },
+    ]);
+    const first = before.state.entries[0];
+    const second = before.state.entries[1];
+    if (first === undefined || second === undefined) {
+      throw new Error('Expected two resident entries');
+    }
+    const saved = structuredClone(before);
+
+    expect(() => Reflect.apply(comparePriority, undefined, ['unknown', first, second])).toThrow();
+    expect(before).toEqual(saved);
+    expect(comparePriority('FIFO', first, second)).toBeLessThan(0);
+    expect(comparePriority('LRU', first, second)).toBeGreaterThan(0);
+    expect(comparePriority('LFU', first, second)).toBeGreaterThan(0);
+  });
 });

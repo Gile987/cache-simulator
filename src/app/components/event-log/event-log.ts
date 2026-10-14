@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { AccessEvent, CacheEvent, InsertEvent, StrategyEvent } from '../../cache-engine/models';
+import { assertNever } from '../../cache-engine/assert-never';
 
 @Component({
   selector: 'app-event-log',
@@ -11,18 +12,26 @@ export class EventLog {
   readonly events = input.required<readonly CacheEvent[]>();
 
   protected summary(event: CacheEvent): string {
-    if (event.kind === 'access') {
-      return this.accessSummary(event);
+    switch (event.kind) {
+      case 'access':
+        return this.accessSummary(event);
+      case 'strategy':
+        return this.strategySummary(event);
+      case 'insert':
+        return this.insertSummary(event);
+      default:
+        return assertNever(event);
     }
-    if (event.kind === 'strategy') {
-      return this.strategySummary(event);
-    }
-    return this.insertSummary(event);
   }
 
   private accessSummary(event: AccessEvent): string {
-    const outcome = event.result === 'hit' ? 'hit' : 'miss';
-    return `Access "${event.key}": ${outcome}. Usage: ${event.used} / ${event.capacity}.`;
+    switch (event.result) {
+      case 'hit':
+      case 'miss':
+        return `Access "${event.key}": ${event.result}. Usage: ${event.used} / ${event.capacity}.`;
+      default:
+        return assertNever(event.result);
+    }
   }
 
   private strategySummary(event: StrategyEvent): string {

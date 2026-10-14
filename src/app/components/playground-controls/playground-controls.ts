@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { STRATEGIES, STRATEGY_INFO } from '../../cache-engine/models';
 import type { Strategy, ValidationField } from '../../cache-engine/models';
 import { readInputValue } from '../../ui/dom';
+import { assertNever } from '../../cache-engine/assert-never';
 
 export interface ControlDrafts {
   readonly itemKey: string;
@@ -52,10 +53,24 @@ export class PlaygroundControls {
   }
 
   protected requestOperation(request: ControlRequest): void {
-    if (request.type !== 'reset' && request.type !== 'loadExample') {
-      if (this.exampleActive() || (request.type === 'setCapacity' && !this.canEditCapacity())) {
-        return;
-      }
+    switch (request.type) {
+      case 'reset':
+      case 'loadExample':
+        break;
+      case 'add':
+      case 'access':
+      case 'setStrategy':
+        if (this.exampleActive()) {
+          return;
+        }
+        break;
+      case 'setCapacity':
+        if (this.exampleActive() || !this.canEditCapacity()) {
+          return;
+        }
+        break;
+      default:
+        assertNever(request);
     }
     this.operation.emit(request);
   }
