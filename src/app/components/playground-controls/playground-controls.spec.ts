@@ -86,6 +86,44 @@ describe('PlaygroundControls', () => {
     });
   });
 
+  it.each([
+    ['item-key', 'key'],
+    ['item-size', 'size'],
+    ['access-key', 'access'],
+    ['capacity', 'capacity'],
+  ] as const)('associates the %s input only with its rendered error', (id, field) => {
+    const input = requireElement<HTMLInputElement>(root, `[data-testid="${id}-input"]`);
+    const errorId = `${id}-error`;
+    const errors = { key: null, size: null, access: null, capacity: null };
+
+    expect(input.hasAttribute('aria-describedby')).toBe(false);
+    expect(root.querySelector(`#${errorId}`)).toBeNull();
+
+    for (const message of ['Enter a valid value.', 'Try another value.']) {
+      fixture.componentRef.setInput('errors', { ...errors, [field]: message });
+      fixture.detectChanges();
+
+      expect(input.getAttribute('aria-describedby')).toBe(errorId);
+      const error = requireElement(root, `#${errorId}`);
+      expect(error.getAttribute('role')).toBe('alert');
+      expect(error.textContent).toBe(message);
+      expect(root.querySelector(`label[for="${input.id}"]`)).not.toBeNull();
+      for (const other of root.querySelectorAll('input')) {
+        if (other !== input) {
+          expect(other.hasAttribute('aria-describedby')).toBe(false);
+        }
+      }
+    }
+
+    for (const message of ['', null]) {
+      fixture.componentRef.setInput('errors', { ...errors, [field]: message });
+      fixture.detectChanges();
+
+      expect(input.hasAttribute('aria-describedby')).toBe(false);
+      expect(root.querySelector(`#${errorId}`)).toBeNull();
+    }
+  });
+
   it('displays rejection feedback and preserves drafts until the parent supplies accepted values', () => {
     requireElement<HTMLButtonElement>(root, '[data-testid="add-button"]').click();
     fixture.componentRef.setInput('errors', {
