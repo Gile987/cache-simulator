@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { STRATEGIES, STRATEGY_INFO } from '../../cache-engine/models';
 import type { Strategy, ValidationField } from '../../cache-engine/models';
-import { readInputValue } from '../../ui/dom';
 import { assertNever } from '../../cache-engine/assert-never';
 
 export interface ControlDrafts {
@@ -45,11 +44,11 @@ export class PlaygroundControls {
   protected readonly strategies = STRATEGIES;
   protected readonly strategyInfo = computed(() => STRATEGY_INFO[this.strategy()]);
 
-  protected editDraft(field: keyof ControlDrafts, event: Event): void {
+  protected editDraft(field: keyof ControlDrafts, value: string): void {
     if (this.exampleActive() || (field === 'capacity' && !this.canEditCapacity())) {
       return;
     }
-    this.draftChange.emit({ field, value: readInputValue(event) });
+    this.draftChange.emit({ field, value });
   }
 
   protected requestOperation(request: ControlRequest): void {
@@ -75,14 +74,11 @@ export class PlaygroundControls {
     this.operation.emit(request);
   }
 
-  protected changeStrategy(event: Event): void {
-    const strategy = STRATEGIES.find((candidate) => candidate === readInputValue(event));
+  protected changeStrategy(select: HTMLSelectElement): void {
+    const strategy = STRATEGIES.find((candidate) => candidate === select.value);
     if (strategy !== undefined) {
       this.requestOperation({ type: 'setStrategy', strategy });
     }
-    const target = event.target;
-    if (target instanceof HTMLSelectElement) {
-      target.value = this.strategy();
-    }
+    select.value = this.strategy();
   }
 }
