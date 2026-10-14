@@ -3,6 +3,7 @@ import type {
   CacheEntry,
   EngineCommand,
   EngineSnapshot,
+  ValidationField,
   ValidationIssue,
 } from './cache-engine/models';
 import { createInitialState, describeEvent, hitRate, runCommand } from './cache-engine/engine';
@@ -20,6 +21,13 @@ import type {
   ControlRequest,
   DraftChange,
 } from './components/playground-controls/playground-controls';
+
+const DRAFT_ERROR_FIELDS: Readonly<Record<keyof ControlDrafts, ValidationField>> = {
+  itemKey: 'key',
+  itemSize: 'size',
+  accessKey: 'access',
+  capacity: 'capacity',
+};
 
 @Component({
   selector: 'app-root',
@@ -74,6 +82,10 @@ export class App {
       return;
     }
     this.drafts.update((drafts) => ({ ...drafts, [change.field]: change.value }));
+    const field = DRAFT_ERROR_FIELDS[change.field];
+    this.errors.update((errors) =>
+      errors[field] === null ? errors : { ...errors, [field]: null },
+    );
   }
 
   protected onControlRequest(request: ControlRequest): void {
@@ -110,20 +122,15 @@ export class App {
     if (this.exampleActive() || !this.applyCapacity()) {
       return;
     }
-    this.errors.update((errors) => ({ ...errors, key: null, size: null }));
-
     const drafts = this.drafts();
     const sizeResult = parseIntegerField(drafts.itemSize, 'size', 'Size');
-    if (!sizeResult.ok) {
-      this.errors.update((errors) => ({
-        ...errors,
-        size: sizeResult.issue.message,
-      }));
-      return;
-    }
     const keyIssue = validateKey(drafts.itemKey);
-    if (keyIssue !== null) {
-      this.errors.update((errors) => ({ ...errors, key: keyIssue.message }));
+    this.errors.update((errors) => ({
+      ...errors,
+      key: keyIssue?.message ?? null,
+      size: sizeResult.ok ? null : sizeResult.issue.message,
+    }));
+    if (!sizeResult.ok || keyIssue !== null) {
       return;
     }
 
