@@ -54,89 +54,100 @@
         }
       </div>
 
-      <fieldset class="group">
-        <legend>Add item</legend>
-        <div class="row">
-          <div class="field">
-            <label for="item-key">Key</label>
-            <input
-              id="item-key"
-              type="text"
-              maxlength="40"
-              autocomplete="off"
-              data-testid="item-key-input"
-              [value]="itemKey()"
-              [disabled]="exampleActive()"
-              [attr.aria-invalid]="addKeyError() !== null"
-              (input)="onItemKeyInput($event)"
-            />
-            @if (addKeyError(); as message) {
-              <p class="error" role="alert">{{ message }}</p>
-            }
+      <form
+        aria-labelledby="add-heading"
+        data-testid="add-form"
+        novalidate
+        (submit)="$event.preventDefault(); addItem()"
+      >
+        <fieldset class="group">
+          <legend id="add-heading">Add item</legend>
+          <div class="row">
+            <div class="field">
+              <label for="item-key">Key</label>
+              <input
+                id="item-key"
+                type="text"
+                maxlength="40"
+                autocomplete="off"
+                data-testid="item-key-input"
+                [value]="itemKey()"
+                [disabled]="exampleActive()"
+                [attr.aria-invalid]="addKeyError() !== null"
+                (input)="onItemKeyInput($event)"
+              />
+              @if (addKeyError(); as message) {
+                <p class="error" role="alert">{{ message }}</p>
+              }
+            </div>
+            <div class="field">
+              <label for="item-size">Size</label>
+              <input
+                id="item-size"
+                type="number"
+                min="1"
+                max="100"
+                step="1"
+                inputmode="numeric"
+                data-testid="item-size-input"
+                [value]="itemSize()"
+                [disabled]="exampleActive()"
+                [attr.aria-invalid]="addSizeError() !== null"
+                (input)="onItemSizeInput($event)"
+              />
+              @if (addSizeError(); as message) {
+                <p class="error" role="alert">{{ message }}</p>
+              }
+            </div>
           </div>
-          <div class="field">
-            <label for="item-size">Size</label>
-            <input
-              id="item-size"
-              type="number"
-              min="1"
-              max="100"
-              step="1"
-              inputmode="numeric"
-              data-testid="item-size-input"
-              [value]="itemSize()"
-              [disabled]="exampleActive()"
-              [attr.aria-invalid]="addSizeError() !== null"
-              (input)="onItemSizeInput($event)"
-            />
-            @if (addSizeError(); as message) {
-              <p class="error" role="alert">{{ message }}</p>
-            }
-          </div>
-        </div>
-        <button
-          type="button"
-          class="primary"
-          data-testid="add-button"
-          [disabled]="exampleActive()"
-          (click)="addItem()"
-        >
-          Add item
-        </button>
-      </fieldset>
+          <button
+            type="submit"
+            class="primary"
+            data-testid="add-button"
+            [disabled]="exampleActive()"
+          >
+            Add item
+          </button>
+        </fieldset>
+      </form>
 
-      <fieldset class="group">
-        <legend>Access item</legend>
-        <div class="row">
-          <div class="field">
-            <label for="access-key">Key</label>
-            <input
-              id="access-key"
-              type="text"
-              maxlength="40"
-              autocomplete="off"
-              data-testid="access-key-input"
-              [value]="accessKey()"
-              [disabled]="exampleActive()"
-              [attr.aria-invalid]="accessError() !== null"
-              (input)="onAccessKeyInput($event)"
-              (keyup.enter)="accessItem()"
-            />
-            @if (accessError(); as message) {
-              <p class="error" role="alert">{{ message }}</p>
-            }
+      <form
+        aria-labelledby="access-heading"
+        data-testid="access-form"
+        novalidate
+        (submit)="$event.preventDefault(); accessItem()"
+      >
+        <fieldset class="group">
+          <legend id="access-heading">Access item</legend>
+          <div class="row">
+            <div class="field">
+              <label for="access-key">Key</label>
+              <input
+                id="access-key"
+                type="text"
+                maxlength="40"
+                autocomplete="off"
+                data-testid="access-key-input"
+                [value]="accessKey()"
+                [disabled]="exampleActive()"
+                [attr.aria-invalid]="accessError() !== null"
+                (input)="onAccessKeyInput($event)"
+              />
+              @if (accessError(); as message) {
+                <p class="error" role="alert">{{ message }}</p>
+              }
+            </div>
           </div>
-        </div>
-        <button
-          type="button"
-          class="primary"
-          data-testid="access-button"
-          [disabled]="exampleActive()"
-          (click)="accessItem()"
-        >
-          Access
-        </button>
-      </fieldset>
+          <button
+            type="submit"
+            class="primary"
+            data-testid="access-button"
+            [disabled]="exampleActive()"
+          >
+            Access
+          </button>
+        </fieldset>
+      </form>
 
       <div class="actions">
         <button type="button" data-testid="reset-button" (click)="reset()">Reset simulation</button>
