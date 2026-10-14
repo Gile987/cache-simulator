@@ -53,13 +53,12 @@
       </p>
       <ol class="steps" data-testid="example-steps">
         @for (step of exampleSteps; track $index) {
-          <li class="step" [attr.data-status]="stepStatus($index)">
+          @let status = stepStatus($index);
+          <li class="step" [attr.data-status]="status">
             <span class="step-number">{{ $index + 1 }}</span>
             <span class="step-label">{{ step.label }}</span>
-            @if (stepStatus($index) === 'done') {
-              <span class="step-tag">done</span>
-            } @else if (stepStatus($index) === 'next') {
-              <span class="step-tag">next</span>
+            @if (status !== 'pending') {
+              <span class="step-tag">{{ status }}</span>
             }
           </li>
         }

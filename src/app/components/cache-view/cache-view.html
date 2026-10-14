@@ -1,7 +1,10 @@
+@let current = state();
+@let queue = priority();
+
 <section class="cache-view" aria-labelledby="cache-heading">
   <header class="section-head">
     <h2 id="cache-heading">Cache contents</h2>
-    <p class="usage" data-testid="usage">{{ used() }} / {{ state().capacity }} units</p>
+    <p class="usage" data-testid="usage">{{ used() }} / {{ current.capacity }} units</p>
   </header>
 
   <div class="capacity-bar" role="img" [attr.aria-label]="barLabel()">
@@ -14,11 +17,11 @@
     }
   </div>
 
-  @if (state().entries.length === 0) {
+  @if (current.entries.length === 0) {
     <p class="empty" data-testid="empty-state">The cache is empty. Add an item to get started.</p>
   } @else {
     <ul class="cards">
-      @for (entry of state().entries; track entry.key) {
+      @for (entry of current.entries; track entry.key) {
         <li class="card" data-testid="card">
           <div class="card-head">
             <span class="card-key">{{ entry.key }}</span>
@@ -61,11 +64,11 @@
       Evaluated only if an insertion needs room. The first item would be evicted first; nothing is
       removed immediately.
     </p>
-    @if (priority().length === 0) {
+    @if (queue.length === 0) {
       <p class="empty" data-testid="priority-empty">No resident items.</p>
     } @else {
       <ol class="priority-list" data-testid="priority-list">
-        @for (entry of priority(); track entry.key) {
+        @for (entry of queue; track entry.key) {
           <li class="priority-item" [class.first]="$first">
             <span class="rank">{{ $index + 1 }}</span>
             <span class="priority-key">{{ entry.key }}</span>
