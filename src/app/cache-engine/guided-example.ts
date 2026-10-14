@@ -1,4 +1,4 @@
-import { EngineCommand } from './models';
+import type { EngineCommand } from './models';
 
 export const GUIDED_CAPACITY = 10;
 

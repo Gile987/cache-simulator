@@ -1,5 +1,10 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { AccessEvent, CacheEvent, InsertEvent, StrategyEvent } from '../../cache-engine/models';
+import type {
+  AccessEvent,
+  CacheEvent,
+  InsertEvent,
+  StrategyEvent,
+} from '../../cache-engine/models';
 import { assertNever } from '../../cache-engine/assert-never';
 
 @Component({

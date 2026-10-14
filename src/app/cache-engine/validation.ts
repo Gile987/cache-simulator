@@ -1,4 +1,4 @@
-import { ValidationField, ValidationIssue } from './models';
+import type { ValidationField, ValidationIssue } from './models';
 
 export const MIN_VALUE = 1;
 export const MAX_VALUE = 100;

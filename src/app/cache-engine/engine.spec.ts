@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CacheEvent, CacheState, EngineCommand, EngineSnapshot, Strategy } from './models';
+import type { CacheEvent, CacheState, EngineCommand, EngineSnapshot, Strategy } from './models';
 import { applyCommand, createInitialState, hitRate, runCommand, usedCapacity } from './engine';
 import { comparePriority, priorityOrder } from './priority';
 import { GUIDED_CAPACITY, GUIDED_STEPS } from './guided-example';
