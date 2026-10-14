@@ -569,6 +569,10 @@ describe('App', () => {
         fixture.detectChanges();
 
         expect(input.getAttribute('aria-invalid')).toBe('true');
+        expect(input.getAttribute('aria-describedby')).toBe(`${id}-error`);
+        expect(requireElement(root, `#${id}-error`).textContent).toBe(
+          root.querySelector('.error')?.textContent,
+        );
         expect(root.querySelectorAll('.error')).toHaveLength(1);
         const before = fixture.componentInstance['snapshot']();
         const saved = structuredClone(before);
@@ -584,6 +588,8 @@ describe('App', () => {
         });
         expect(input.value).toBe(corrected);
         expect(input.getAttribute('aria-invalid')).toBe('false');
+        expect(input.hasAttribute('aria-describedby')).toBe(false);
+        expect(root.querySelector(`#${id}-error`)).toBeNull();
         expect(root.querySelector('.error')).toBeNull();
         expect(fixture.componentInstance['snapshot']()).toBe(before);
         expect(before).toEqual(saved);
@@ -623,6 +629,10 @@ describe('App', () => {
       expect(root.textContent).toContain('Size must be between 1 and 100.');
       expect(key.getAttribute('aria-invalid')).toBe('true');
       expect(size.getAttribute('aria-invalid')).toBe('true');
+      expect(key.getAttribute('aria-describedby')).toBe('item-key-error');
+      expect(size.getAttribute('aria-describedby')).toBe('item-size-error');
+      expect(requireElement(root, '#item-key-error').textContent).toContain('Enter a key.');
+      expect(requireElement(root, '#item-size-error').textContent).toContain('Size');
       expect(key.value).toBe('   ');
       expect(size.value).toBe('0');
       expect(fixture.componentInstance['snapshot']()).toBe(before);
@@ -633,6 +643,10 @@ describe('App', () => {
 
       expect(key.getAttribute('aria-invalid')).toBe('false');
       expect(size.getAttribute('aria-invalid')).toBe('true');
+      expect(key.hasAttribute('aria-describedby')).toBe(false);
+      expect(root.querySelector('#item-key-error')).toBeNull();
+      expect(size.getAttribute('aria-describedby')).toBe('item-size-error');
+      expect(requireElement(root, '#item-size-error').textContent).toContain('Size');
       expect(root.querySelectorAll('.error')).toHaveLength(1);
       expect(root.querySelector('.error')?.textContent).toContain('Size');
       expect(fixture.componentInstance['snapshot']()).toBe(before);
@@ -646,6 +660,8 @@ describe('App', () => {
       setInputValue(size, '3');
       fixture.detectChanges();
 
+      expect(size.hasAttribute('aria-describedby')).toBe(false);
+      expect(root.querySelector('#item-size-error')).toBeNull();
       expect(root.querySelector('.error')).toBeNull();
       expect(fixture.componentInstance['snapshot']()).toBe(before);
       submitOperation(root, 'add');

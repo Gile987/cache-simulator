@@ -31,11 +31,12 @@
       [value]="drafts().capacity"
       [disabled]="!canEditCapacity()"
       [attr.aria-invalid]="errors().capacity !== null"
+      [attr.aria-describedby]="errors().capacity ? 'capacity-error' : null"
       (input)="editDraft('capacity', capacityInput.value)"
       (change)="requestOperation({ type: 'setCapacity' })"
     />
     @if (errors().capacity; as message) {
-      <p class="error" role="alert">{{ message }}</p>
+      <p id="capacity-error" class="error" role="alert">{{ message }}</p>
     } @else if (!canEditCapacity()) {
       <p class="help">Reset to change capacity.</p>
     }
@@ -62,10 +63,11 @@
             [value]="drafts().itemKey"
             [disabled]="exampleActive()"
             [attr.aria-invalid]="errors().key !== null"
+            [attr.aria-describedby]="errors().key ? 'item-key-error' : null"
             (input)="editDraft('itemKey', itemKeyInput.value)"
           />
           @if (errors().key; as message) {
-            <p class="error" role="alert">{{ message }}</p>
+            <p id="item-key-error" class="error" role="alert">{{ message }}</p>
           }
         </div>
         <div class="field">
@@ -82,10 +84,11 @@
             [value]="drafts().itemSize"
             [disabled]="exampleActive()"
             [attr.aria-invalid]="errors().size !== null"
+            [attr.aria-describedby]="errors().size ? 'item-size-error' : null"
             (input)="editDraft('itemSize', itemSizeInput.value)"
           />
           @if (errors().size; as message) {
-            <p class="error" role="alert">{{ message }}</p>
+            <p id="item-size-error" class="error" role="alert">{{ message }}</p>
           }
         </div>
       </div>
@@ -116,10 +119,11 @@
             [value]="drafts().accessKey"
             [disabled]="exampleActive()"
             [attr.aria-invalid]="errors().access !== null"
+            [attr.aria-describedby]="errors().access ? 'access-key-error' : null"
             (input)="editDraft('accessKey', accessKeyInput.value)"
           />
           @if (errors().access; as message) {
-            <p class="error" role="alert">{{ message }}</p>
+            <p id="access-key-error" class="error" role="alert">{{ message }}</p>
           }
         </div>
       </div>
