@@ -1,6 +1,6 @@
-export type Strategy = 'FIFO' | 'LRU' | 'LFU';
+export const STRATEGIES = ['FIFO', 'LRU', 'LFU'] as const;
 
-export const STRATEGIES: readonly Strategy[] = ['FIFO', 'LRU', 'LFU'];
+export type Strategy = (typeof STRATEGIES)[number];
 
 export const STRATEGY_INFO: Readonly<Record<Strategy, string>> = {
   FIFO: 'First In, First Out: the item added earliest is evicted first. Accesses do not change eviction priority.',

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { STRATEGIES, STRATEGY_INFO } from '../../cache-engine/models';
 import type { Strategy, ValidationField } from '../../cache-engine/models';
+import { MAX_KEY_LENGTH, MAX_VALUE, MIN_VALUE } from '../../cache-engine/validation';
 import { assertNever } from '../../cache-engine/assert-never';
 
 export interface ControlDrafts {
@@ -42,6 +43,9 @@ export class PlaygroundControls {
   readonly operation = output<ControlRequest>();
 
   protected readonly strategies = STRATEGIES;
+  protected readonly minValue = MIN_VALUE;
+  protected readonly maxValue = MAX_VALUE;
+  protected readonly maxKeyLength = MAX_KEY_LENGTH;
   protected readonly strategyInfo = computed(() => STRATEGY_INFO[this.strategy()]);
 
   protected editDraft(field: keyof ControlDrafts, value: string): void {
