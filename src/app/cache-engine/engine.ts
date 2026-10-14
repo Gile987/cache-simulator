@@ -12,7 +12,7 @@ import {
   ValidationIssue,
 } from './models';
 import { evictionReason, priorityOrder } from './priority';
-import { MAX_KEY_LENGTH, MAX_VALUE, MIN_VALUE, normalizeKey, validateKey } from './validation';
+import { MAX_VALUE, MIN_VALUE, normalizeKey, validateKey } from './validation';
 import { assertNever } from './assert-never';
 
 export const MAX_EVENTS = 50;
@@ -131,8 +131,9 @@ function applyAccess(state: CacheState, rawKey: string): EngineResult {
   const key = normalizeKey(rawKey);
   const operationStep = state.step + 1;
   const index = state.entries.findIndex((entry) => entry.key === key);
+  const target = state.entries[index];
 
-  if (index === -1) {
+  if (target === undefined) {
     const nextState: CacheState = { ...state, step: operationStep, misses: state.misses + 1 };
     const event: AccessEvent = {
       kind: 'access',
@@ -145,7 +146,6 @@ function applyAccess(state: CacheState, rawKey: string): EngineResult {
     return { ok: true, state: nextState, event };
   }
 
-  const target = state.entries[index];
   const updated: CacheEntry = {
     ...target,
     lastAccessStep: operationStep,

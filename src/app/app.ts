@@ -1,12 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { CacheEntry, EngineCommand, EngineSnapshot, ValidationIssue } from './cache-engine/models';
-import {
-  createInitialState,
-  describeEvent,
-  hitRate,
-  runCommand,
-  usedCapacity,
-} from './cache-engine/engine';
+import { createInitialState, describeEvent, hitRate, runCommand } from './cache-engine/engine';
 import type { CommandOutcome } from './cache-engine/engine';
 import { assertNever } from './cache-engine/assert-never';
 import { priorityOrder } from './cache-engine/priority';
@@ -56,7 +50,6 @@ export class App {
 
   protected readonly state = computed(() => this.snapshot().state);
   protected readonly events = computed(() => this.snapshot().events);
-  protected readonly used = computed(() => usedCapacity(this.state()));
   protected readonly priority = computed<readonly CacheEntry[]>(() =>
     priorityOrder(this.state().entries, this.state().strategy),
   );

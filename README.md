@@ -100,6 +100,7 @@ Browser checks are performed manually by the user; automated verification uses t
 - Native HTML controls and SCSS avoid UI, chart, canvas, and animation dependencies.
 - Add and Access use separate native forms with Angular submit listeners that prevent page navigation. Signal drafts retain raw input strings for custom validation; `novalidate` lets the app show its own field errors for invalid numeric values.
 - Command dispatch, history handling, eviction policies, displayed priority metrics, event summaries, access results, control requests, and validation routing use exhaustive switches with a shared framework-free `assertNever` guard. Adding an unhandled union member produces a compiler error at its handler; unexpected runtime values throw instead of silently using Reset, LFU, or another existing branch. Cases that share behavior remain grouped.
+- Both application and test TypeScript configurations inherit `noUnusedLocals`, `noUnusedParameters`, and `noUncheckedIndexedAccess`. These checks catch unused declarations and require array lookups to account for missing entries. Access retrieves and guards the resident entry before updating its metadata, preserving the existing hit and miss behavior without type assertions.
 
 ## Limitations and deferred work
 
