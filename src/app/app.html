@@ -1,0 +1,223 @@
+<header class="app-header">
+  <div>
+    <h1>Cache Eviction Playground</h1>
+    <p class="subtitle">
+      Insert items, access them, and watch FIFO, LRU, or LFU decide what gets evicted.
+    </p>
+  </div>
+  <p class="notice" role="note">
+    Teaching simulation in browser memory. It does not read or change your browser's real HTTP
+    cache, Cache Storage, or localStorage.
+  </p>
+</header>
+
+<div class="layout">
+  <div class="column">
+    <section class="panel" aria-labelledby="config-heading">
+      <h2 id="config-heading">Configuration and controls</h2>
+
+      <div class="field">
+        <label for="strategy">Strategy</label>
+        <select
+          id="strategy"
+          [value]="state().strategy"
+          [disabled]="exampleActive()"
+          (change)="onStrategyChange($event)"
+        >
+          @for (option of strategies; track option) {
+            <option [value]="option">{{ option }}</option>
+          }
+        </select>
+        <p class="help">{{ strategyInfo() }}</p>
+      </div>
+
+      <div class="field">
+        <label for="capacity">Capacity (abstract units)</label>
+        <input
+          id="capacity"
+          type="number"
+          min="1"
+          max="100"
+          step="1"
+          inputmode="numeric"
+          data-testid="capacity-input"
+          [value]="capacityDraft()"
+          [disabled]="!canEditCapacity()"
+          [attr.aria-invalid]="capacityError() !== null"
+          (input)="onCapacityInput($event)"
+          (change)="applyCapacity()"
+        />
+        @if (capacityError(); as message) {
+          <p class="error" role="alert">{{ message }}</p>
+        } @else if (!canEditCapacity()) {
+          <p class="help">Reset to change capacity.</p>
+        }
+      </div>
+
+      <fieldset class="group">
+        <legend>Add item</legend>
+        <div class="row">
+          <div class="field">
+            <label for="item-key">Key</label>
+            <input
+              id="item-key"
+              type="text"
+              maxlength="40"
+              autocomplete="off"
+              data-testid="item-key-input"
+              [value]="itemKey()"
+              [disabled]="exampleActive()"
+              [attr.aria-invalid]="addKeyError() !== null"
+              (input)="onItemKeyInput($event)"
+            />
+            @if (addKeyError(); as message) {
+              <p class="error" role="alert">{{ message }}</p>
+            }
+          </div>
+          <div class="field">
+            <label for="item-size">Size</label>
+            <input
+              id="item-size"
+              type="number"
+              min="1"
+              max="100"
+              step="1"
+              inputmode="numeric"
+              data-testid="item-size-input"
+              [value]="itemSize()"
+              [disabled]="exampleActive()"
+              [attr.aria-invalid]="addSizeError() !== null"
+              (input)="onItemSizeInput($event)"
+            />
+            @if (addSizeError(); as message) {
+              <p class="error" role="alert">{{ message }}</p>
+            }
+          </div>
+        </div>
+        <button
+          type="button"
+          class="primary"
+          data-testid="add-button"
+          [disabled]="exampleActive()"
+          (click)="addItem()"
+        >
+          Add item
+        </button>
+      </fieldset>
+
+      <fieldset class="group">
+        <legend>Access item</legend>
+        <div class="row">
+          <div class="field">
+            <label for="access-key">Key</label>
+            <input
+              id="access-key"
+              type="text"
+              maxlength="40"
+              autocomplete="off"
+              data-testid="access-key-input"
+              [value]="accessKey()"
+              [disabled]="exampleActive()"
+              [attr.aria-invalid]="accessError() !== null"
+              (input)="onAccessKeyInput($event)"
+              (keyup.enter)="accessItem()"
+            />
+            @if (accessError(); as message) {
+              <p class="error" role="alert">{{ message }}</p>
+            }
+          </div>
+        </div>
+        <button
+          type="button"
+          class="primary"
+          data-testid="access-button"
+          [disabled]="exampleActive()"
+          (click)="accessItem()"
+        >
+          Access
+        </button>
+      </fieldset>
+
+      <div class="actions">
+        <button type="button" data-testid="reset-button" (click)="reset()">Reset simulation</button>
+        <button type="button" data-testid="load-example-button" (click)="loadExample()">
+          Load guided example
+        </button>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="stats-heading">
+      <h2 id="stats-heading">Statistics</h2>
+      <dl class="stats">
+        <div>
+          <dt>Hits</dt>
+          <dd data-testid="hits">{{ state().hits }}</dd>
+        </div>
+        <div>
+          <dt>Misses</dt>
+          <dd data-testid="misses">{{ state().misses }}</dd>
+        </div>
+        <div>
+          <dt>Hit rate</dt>
+          <dd data-testid="hit-rate">{{ rateLabel() }}</dd>
+        </div>
+        <div>
+          <dt>Evictions</dt>
+          <dd data-testid="evictions">{{ state().evictions }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="panel" aria-labelledby="example-heading">
+      <h2 id="example-heading">Guided example</h2>
+      <p class="help">
+        A deterministic eight-step sequence with capacity 10. Loading it keeps the selected strategy
+        and resets the simulation.
+      </p>
+      <ol class="steps" data-testid="example-steps">
+        @for (step of exampleSteps; track $index) {
+          <li class="step" [attr.data-status]="stepStatus($index)">
+            <span class="step-number">{{ $index + 1 }}</span>
+            <span class="step-label">{{ step.label }}</span>
+            @if (stepStatus($index) === 'done') {
+              <span class="step-tag">done</span>
+            } @else if (stepStatus($index) === 'next') {
+              <span class="step-tag">next</span>
+            }
+          </li>
+        }
+      </ol>
+      <button
+        type="button"
+        class="primary"
+        data-testid="next-step-button"
+        [disabled]="!exampleActive() || exampleComplete()"
+        (click)="nextExampleStep()"
+      >
+        Next step
+      </button>
+      @if (exampleComplete()) {
+        <p class="help" data-testid="example-complete">
+          Example complete. Reset, change strategy, and load the example again to compare.
+        </p>
+      } @else if (!exampleActive()) {
+        <p class="help">Load the guided example to enable Next step.</p>
+      }
+    </section>
+  </div>
+
+  <div class="column">
+    <app-cache-view
+      [state]="state()"
+      [priority]="priority()"
+      [interactive]="!exampleActive()"
+      (access)="accessItem($event)"
+    />
+
+    <app-event-log [events]="events()" />
+
+    <p class="status" role="status" aria-live="polite" data-testid="status">
+      {{ statusMessage() }}
+    </p>
+  </div>
+</div>
