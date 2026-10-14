@@ -69,12 +69,14 @@ State is stored once and derived values (used capacity, hit rate, priority order
 
 `PlaygroundControls` renders the parent's drafts and errors and emits edits and operation requests. `App` keeps a single source for draft and error state so capacity validation, card accesses, Reset, and guided mode stay coordinated. Draft updates replace their objects rather than mutating inputs. Form submission requests execution; the parent clears only the submitted fields after an explicit successful command result and preserves them on rejection.
 
+All engine commands, including Reset and guided steps, use one execution path in `App`. The engine returns an explicit success or failure: success includes the updated snapshot and the event produced by that command, or `null` when no event was produced; failure includes the original snapshot and validation issues. Status announcements use only the returned event, so an accepted no-op cannot announce an old log entry. Guided progress advances only after success; a rejected step remains available for retry, and retrying clears the previous validation feedback.
+
 ## Tests
 
 `npx ng test --watch=false` runs:
 
-- **Engine tests** — insertion without eviction, exact fits, multi-item eviction order, rejected operations leaving state untouched, hit/miss behavior, all three priority policies and their tie-breakers, fresh metadata after re-insertion, strategy switches, `__proto__` as an ordinary key, the guided example under every strategy, zero-access hit rate, capacity invariants, input immutability, and the 50-event log cap.
-- **UI tests** — controls-component requests, raw draft edits and input immutability, submission cancellation, disabled controls, and parent integration for add/access flows, field validation, capacity locking and reset, rejected-draft recovery, card access, and the guided-example step controls.
+- **Engine tests** — insertion without eviction, exact fits, multi-item eviction order, rejected operations leaving state untouched, hit/miss behavior, all three priority policies and their tie-breakers, fresh metadata after re-insertion, strategy switches, `__proto__` as an ordinary key, the guided example under every strategy, zero-access hit rate, capacity invariants, input immutability, the 50-event log cap, and explicit command outcomes with rejection recovery and event-free success.
+- **UI tests** — controls-component requests, raw draft edits and input immutability, submission cancellation, disabled controls, and parent integration for add/access flows, field validation, capacity locking and reset, rejected-draft recovery, card access, no-op status handling, and the guided-example step controls including rejected-step retry.
 
 ### Manual browser checks
 
@@ -86,6 +88,7 @@ Browser checks are performed manually by the user; automated verification uses t
 4. Enter `A` in Access and press Enter. Expect exactly one hit and one new event. Click Access with a missing key and expect exactly one miss. Enter another Access draft and click a resident card's Access button: expect a hit while the Access draft stays intact. Submitting an empty Access key should show an error without recording a miss.
 5. Click Reset simulation. Expect empty entries and statistics, cleared drafts and errors, and an editable capacity retaining its last accepted value. Set capacity to `20` and leave the field, then enter `0` and attempt Add. Reset again and confirm capacity returns to `20`.
 6. Select LFU and click Load guided example. Expect capacity `10`, cleared errors, and disabled manual inputs and submit buttons with visible disabled styling. Advance all eight steps: expect B evicted, usage `10 / 10`, four hits, zero misses, and a disabled Next step button. Reset should restore enabled manual controls.
+7. After a successful Add, select the current strategy again. Expect no new event or step and the existing status to remain unchanged. Submit a duplicate key or an empty Access key: expect the appropriate field error while the previous successful status remains. Correct the draft and submit: expect one new event, cleared submitted fields, and a status describing that operation. Reset should clear the log and show the reset message.
 
 ## Design decisions
 

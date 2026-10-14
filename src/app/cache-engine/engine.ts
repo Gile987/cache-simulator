@@ -213,20 +213,28 @@ export function applyCommand(state: CacheState, command: EngineCommand): EngineR
   return applyReset(state);
 }
 
-export interface CommandOutcome {
-  readonly snapshot: EngineSnapshot;
-  readonly issues: readonly ValidationIssue[];
-}
+export type CommandOutcome =
+  | {
+      readonly ok: true;
+      readonly snapshot: EngineSnapshot;
+      readonly event: CacheEvent | null;
+    }
+  | {
+      readonly ok: false;
+      readonly snapshot: EngineSnapshot;
+      readonly issues: readonly ValidationIssue[];
+    };
 
 export function runCommand(snapshot: EngineSnapshot, command: EngineCommand): CommandOutcome {
   const result = applyCommand(snapshot.state, command);
   if (!result.ok) {
-    return { snapshot, issues: result.issues };
+    return { ok: false, snapshot, issues: result.issues };
   }
   const events = command.type === 'reset' ? [] : appendEvent(snapshot.events, result.event);
   return {
+    ok: true,
     snapshot: { state: result.state, events },
-    issues: [],
+    event: result.event,
   };
 }
 
