@@ -5,7 +5,6 @@ import { assertNever } from '../../cache-engine/assert-never';
 
 interface Segment {
   readonly key: string;
-  readonly size: number;
   readonly percent: number;
   readonly color: string;
 }
@@ -28,7 +27,6 @@ export class CacheView {
     const state = this.state();
     return state.entries.map((entry, index) => ({
       key: entry.key,
-      size: entry.size,
       percent: (entry.size / state.capacity) * 100,
       color: `hsl(${(index * 137.5) % 360} 62% 52%)`,
     }));
