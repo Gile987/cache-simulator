@@ -26,7 +26,7 @@ npm test -- --watch=false   # run the test suite once
 
 ## How to use it
 
-1. Choose a strategy (FIFO, LRU, or LFU) and a capacity. Capacity can only be changed while the simulation is at step 0; after the first accepted operation it is locked until you reset.
+1. Choose a strategy (FIFO, LRU, or LFU) and a capacity. Capacity can only be changed while the simulation is at step 0; after the first accepted operation it is locked until you reset. Before accepting the first Add, Access, or strategy change, the app validates and applies the capacity currently entered, even if the field has not lost focus. Invalid capacity blocks the operation and stays editable so you can correct it.
 2. Add items with a key and a size, and access keys (existing or missing) with the Access controls or the per-card buttons.
 3. Watch the segmented capacity bar, the insertion-order item cards, the separate "Eviction priority" list, the statistics, and the event log.
 4. Use **Load guided example** for a deterministic eight-step scenario, then advance it one step at a time with **Next step**.
