@@ -19,6 +19,13 @@ function clickButton(root: HTMLElement, selector: string): void {
   requireElement<HTMLButtonElement>(root, selector).click();
 }
 
+function submitOperation(root: HTMLElement, operation: 'add' | 'access'): Event {
+  const form = requireElement<HTMLFormElement>(root, `[data-testid="${operation}-form"]`);
+  const event = new Event('submit', { bubbles: true, cancelable: true });
+  form.dispatchEvent(event);
+  return event;
+}
+
 type InitialOperation = 'add' | 'access' | 'strategy';
 
 function prepareOperation(root: HTMLElement, size = '3'): void {
@@ -87,6 +94,173 @@ describe('App', () => {
 
     expect(requireElement(root, '[data-testid="misses"]').textContent).toContain('1');
     expect(requireElement(root, '[data-testid="hit-rate"]').textContent).toContain('0.0%');
+  });
+
+  describe.each(['add', 'access'] as const)('%s form submission', (operation) => {
+    it('handles a submit event followed by Enter keyup exactly once without navigation', () => {
+      prepareOperation(root);
+      fixture.detectChanges();
+      const input = requireElement<HTMLInputElement>(
+        root,
+        `[data-testid="${operation === 'add' ? 'item-key' : 'access-key'}-input"]`,
+      );
+      const button = requireElement<HTMLButtonElement>(root, `[data-testid="${operation}-button"]`);
+      expect(button.type).toBe('submit');
+      expect(input.form).toBe(button.form);
+
+      const event = submitOperation(root, operation);
+      input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', bubbles: true }));
+      fixture.detectChanges();
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(root.querySelectorAll('[data-testid="event-list"] > li')).toHaveLength(1);
+      expect(root.querySelector('.error')).toBeNull();
+      expect(input.value).toBe('');
+      if (operation === 'add') {
+        expect(root.querySelectorAll('[data-testid="card"]')).toHaveLength(1);
+        expect(
+          requireElement<HTMLInputElement>(root, '[data-testid="item-size-input"]').value,
+        ).toBe('');
+        expect(
+          requireElement<HTMLInputElement>(root, '[data-testid="access-key-input"]').value,
+        ).toBe('missing');
+        expect(requireElement(root, '[data-testid="misses"]').textContent?.trim()).toBe('0');
+      } else {
+        expect(root.querySelectorAll('[data-testid="card"]')).toHaveLength(0);
+        expect(requireElement(root, '[data-testid="misses"]').textContent?.trim()).toBe('1');
+        expect(requireElement<HTMLInputElement>(root, '[data-testid="item-key-input"]').value).toBe(
+          'A',
+        );
+        expect(
+          requireElement<HTMLInputElement>(root, '[data-testid="item-size-input"]').value,
+        ).toBe('3');
+      }
+    });
+
+    it('clicking submit performs one operation and cancels the native submission', () => {
+      prepareOperation(root);
+      const form = requireElement<HTMLFormElement>(root, `[data-testid="${operation}-form"]`);
+      const submissions: Event[] = [];
+      form.addEventListener('submit', (event) => submissions.push(event));
+
+      clickButton(root, `[data-testid="${operation}-button"]`);
+      fixture.detectChanges();
+
+      expect(submissions).toHaveLength(1);
+      expect(submissions[0]?.defaultPrevented).toBe(true);
+      expect(root.querySelectorAll('[data-testid="event-list"] > li')).toHaveLength(1);
+      expect(root.querySelector('.error')).toBeNull();
+    });
+
+    it('blocks invalid capacity and accepts the retained drafts after correction', () => {
+      prepareOperation(root);
+      const capacity = requireElement<HTMLInputElement>(root, '[data-testid="capacity-input"]');
+      setInputValue(capacity, '0');
+
+      expect(submitOperation(root, operation).defaultPrevented).toBe(true);
+      fixture.detectChanges();
+
+      expect(root.querySelector('.error')?.textContent).toContain('Capacity');
+      expect(root.querySelector('[data-testid="log-empty"]')).not.toBeNull();
+      expect(capacity.disabled).toBe(false);
+      expect(requireElement<HTMLInputElement>(root, '[data-testid="item-key-input"]').value).toBe(
+        'A',
+      );
+      expect(requireElement<HTMLInputElement>(root, '[data-testid="item-size-input"]').value).toBe(
+        '3',
+      );
+      expect(requireElement<HTMLInputElement>(root, '[data-testid="access-key-input"]').value).toBe(
+        'missing',
+      );
+
+      setInputValue(capacity, '20');
+      submitOperation(root, operation);
+      fixture.detectChanges();
+
+      expect(root.querySelector('.error')).toBeNull();
+      expect(root.querySelectorAll('[data-testid="event-list"] > li')).toHaveLength(1);
+      expect(capacity.disabled).toBe(true);
+      expect(requireElement(root, '[data-testid="usage"]').textContent).toContain('/ 20');
+    });
+
+    it('ignores form submission in guided mode and resumes after reset', () => {
+      prepareOperation(root);
+      clickButton(root, '[data-testid="load-example-button"]');
+      fixture.detectChanges();
+
+      expect(
+        requireElement<HTMLButtonElement>(root, `[data-testid="${operation}-button"]`).disabled,
+      ).toBe(true);
+      expect(submitOperation(root, operation).defaultPrevented).toBe(true);
+      fixture.detectChanges();
+
+      expect(root.querySelector('[data-testid="log-empty"]')).not.toBeNull();
+      expect(root.querySelector('.error')).toBeNull();
+      expect(requireElement(root, '[data-testid="status"]').textContent).toContain(
+        'Guided example loaded',
+      );
+
+      clickButton(root, '[data-testid="reset-button"]');
+      prepareOperation(root);
+      submitOperation(root, operation);
+      fixture.detectChanges();
+
+      expect(
+        requireElement<HTMLButtonElement>(root, `[data-testid="${operation}-button"]`).disabled,
+      ).toBe(false);
+      expect(root.querySelectorAll('[data-testid="event-list"] > li')).toHaveLength(1);
+    });
+  });
+
+  it.each(['', '0', '101', '1.5'])(
+    'shows custom size errors for "%s" and recovers through Add submission',
+    (draft) => {
+      const key = requireElement<HTMLInputElement>(root, '[data-testid="item-key-input"]');
+      const size = requireElement<HTMLInputElement>(root, '[data-testid="item-size-input"]');
+      const form = requireElement<HTMLFormElement>(root, '[data-testid="add-form"]');
+      setInputValue(key, 'A');
+      setInputValue(size, draft);
+      expect(form.noValidate).toBe(true);
+
+      clickButton(root, '[data-testid="add-button"]');
+      fixture.detectChanges();
+
+      expect(root.querySelector('.error')?.textContent).toContain('Size');
+      expect(size.getAttribute('aria-invalid')).toBe('true');
+      expect(key.value).toBe('A');
+      expect(size.value).toBe(draft);
+      expect(root.querySelector('[data-testid="log-empty"]')).not.toBeNull();
+
+      setInputValue(size, '3');
+      submitOperation(root, 'add');
+      fixture.detectChanges();
+
+      expect(root.querySelector('.error')).toBeNull();
+      expect(root.querySelectorAll('[data-testid="card"]')).toHaveLength(1);
+      expect(root.querySelectorAll('[data-testid="event-list"] > li')).toHaveLength(1);
+    },
+  );
+
+  it('shows custom Access key errors and accepts a corrected submission', () => {
+    const input = requireElement<HTMLInputElement>(root, '[data-testid="access-key-input"]');
+    setInputValue(input, '   ');
+
+    submitOperation(root, 'access');
+    fixture.detectChanges();
+
+    expect(root.querySelector('.error')?.textContent).toContain('Enter a key');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.value).toBe('   ');
+    expect(root.querySelector('[data-testid="log-empty"]')).not.toBeNull();
+    expect(requireElement(root, '[data-testid="misses"]').textContent?.trim()).toBe('0');
+
+    setInputValue(input, 'missing');
+    submitOperation(root, 'access');
+    fixture.detectChanges();
+
+    expect(root.querySelector('.error')).toBeNull();
+    expect(input.value).toBe('');
+    expect(requireElement(root, '[data-testid="misses"]').textContent?.trim()).toBe('1');
   });
 
   it('locks capacity after the first accepted operation and unlocks after reset', () => {
