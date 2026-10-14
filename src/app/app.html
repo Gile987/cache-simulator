@@ -13,149 +13,15 @@
 
 <div class="layout">
   <div class="column">
-    <section class="panel" aria-labelledby="config-heading">
-      <h2 id="config-heading">Configuration and controls</h2>
-
-      <div class="field">
-        <label for="strategy">Strategy</label>
-        <select
-          id="strategy"
-          [value]="state().strategy"
-          [disabled]="exampleActive()"
-          (change)="onStrategyChange($event)"
-        >
-          @for (option of strategies; track option) {
-            <option [value]="option">{{ option }}</option>
-          }
-        </select>
-        <p class="help">{{ strategyInfo() }}</p>
-      </div>
-
-      <div class="field">
-        <label for="capacity">Capacity (abstract units)</label>
-        <input
-          id="capacity"
-          type="number"
-          min="1"
-          max="100"
-          step="1"
-          inputmode="numeric"
-          data-testid="capacity-input"
-          [value]="capacityDraft()"
-          [disabled]="!canEditCapacity()"
-          [attr.aria-invalid]="capacityError() !== null"
-          (input)="onCapacityInput($event)"
-          (change)="applyCapacity()"
-        />
-        @if (capacityError(); as message) {
-          <p class="error" role="alert">{{ message }}</p>
-        } @else if (!canEditCapacity()) {
-          <p class="help">Reset to change capacity.</p>
-        }
-      </div>
-
-      <form
-        aria-labelledby="add-heading"
-        data-testid="add-form"
-        novalidate
-        (submit)="$event.preventDefault(); addItem()"
-      >
-        <fieldset class="group">
-          <legend id="add-heading">Add item</legend>
-          <div class="row">
-            <div class="field">
-              <label for="item-key">Key</label>
-              <input
-                id="item-key"
-                type="text"
-                maxlength="40"
-                autocomplete="off"
-                data-testid="item-key-input"
-                [value]="itemKey()"
-                [disabled]="exampleActive()"
-                [attr.aria-invalid]="addKeyError() !== null"
-                (input)="onItemKeyInput($event)"
-              />
-              @if (addKeyError(); as message) {
-                <p class="error" role="alert">{{ message }}</p>
-              }
-            </div>
-            <div class="field">
-              <label for="item-size">Size</label>
-              <input
-                id="item-size"
-                type="number"
-                min="1"
-                max="100"
-                step="1"
-                inputmode="numeric"
-                data-testid="item-size-input"
-                [value]="itemSize()"
-                [disabled]="exampleActive()"
-                [attr.aria-invalid]="addSizeError() !== null"
-                (input)="onItemSizeInput($event)"
-              />
-              @if (addSizeError(); as message) {
-                <p class="error" role="alert">{{ message }}</p>
-              }
-            </div>
-          </div>
-          <button
-            type="submit"
-            class="primary"
-            data-testid="add-button"
-            [disabled]="exampleActive()"
-          >
-            Add item
-          </button>
-        </fieldset>
-      </form>
-
-      <form
-        aria-labelledby="access-heading"
-        data-testid="access-form"
-        novalidate
-        (submit)="$event.preventDefault(); accessItem()"
-      >
-        <fieldset class="group">
-          <legend id="access-heading">Access item</legend>
-          <div class="row">
-            <div class="field">
-              <label for="access-key">Key</label>
-              <input
-                id="access-key"
-                type="text"
-                maxlength="40"
-                autocomplete="off"
-                data-testid="access-key-input"
-                [value]="accessKey()"
-                [disabled]="exampleActive()"
-                [attr.aria-invalid]="accessError() !== null"
-                (input)="onAccessKeyInput($event)"
-              />
-              @if (accessError(); as message) {
-                <p class="error" role="alert">{{ message }}</p>
-              }
-            </div>
-          </div>
-          <button
-            type="submit"
-            class="primary"
-            data-testid="access-button"
-            [disabled]="exampleActive()"
-          >
-            Access
-          </button>
-        </fieldset>
-      </form>
-
-      <div class="actions">
-        <button type="button" data-testid="reset-button" (click)="reset()">Reset simulation</button>
-        <button type="button" data-testid="load-example-button" (click)="loadExample()">
-          Load guided example
-        </button>
-      </div>
-    </section>
+    <app-playground-controls
+      [drafts]="drafts()"
+      [errors]="errors()"
+      [strategy]="state().strategy"
+      [canEditCapacity]="canEditCapacity()"
+      [exampleActive]="exampleActive()"
+      (draftChange)="onDraftChange($event)"
+      (operation)="onControlRequest($event)"
+    />
 
     <section class="panel" aria-labelledby="stats-heading">
       <h2 id="stats-heading">Statistics</h2>
