@@ -553,6 +553,188 @@ describe('App', () => {
     expect(requireElement(root, '[data-testid="usage"]').textContent).toContain('10 / 10');
   });
 
+  describe('validation feedback while editing', () => {
+    it.each([
+      ['item-key', '   ', 'A', 'add'],
+      ['item-size', '1.5', '3', 'add'],
+      ['access-key', '   ', 'missing', 'access'],
+      ['capacity', '0', '20', 'add'],
+    ] as const)(
+      'clears only the %s field error on edit and accepts a corrected submission',
+      (id, invalid, corrected, operation) => {
+        prepareOperation(root);
+        const input = requireElement<HTMLInputElement>(root, `[data-testid="${id}-input"]`);
+        setInputValue(input, invalid);
+        submitOperation(root, operation);
+        fixture.detectChanges();
+
+        expect(input.getAttribute('aria-invalid')).toBe('true');
+        expect(root.querySelectorAll('.error')).toHaveLength(1);
+        const before = fixture.componentInstance['snapshot']();
+        const saved = structuredClone(before);
+
+        setInputValue(input, corrected);
+        fixture.detectChanges();
+
+        expect(fixture.componentInstance['errors']()).toEqual({
+          key: null,
+          size: null,
+          access: null,
+          capacity: null,
+        });
+        expect(input.value).toBe(corrected);
+        expect(input.getAttribute('aria-invalid')).toBe('false');
+        expect(root.querySelector('.error')).toBeNull();
+        expect(fixture.componentInstance['snapshot']()).toBe(before);
+        expect(before).toEqual(saved);
+        expect(root.querySelector('[data-testid="log-empty"]')).not.toBeNull();
+
+        submitOperation(root, operation);
+        fixture.detectChanges();
+
+        expect(root.querySelector('.error')).toBeNull();
+        expect(root.querySelectorAll('[data-testid="event-list"] > li')).toHaveLength(1);
+        expect(
+          requireElement<HTMLInputElement>(root, '[data-testid="capacity-input"]').disabled,
+        ).toBe(true);
+      },
+    );
+
+    it('reports both Add errors, clears them independently, and preserves the cache until both fields are valid', () => {
+      prepareOperation(root);
+      submitOperation(root, 'add');
+      fixture.detectChanges();
+      const before = fixture.componentInstance['snapshot']();
+      const saved = structuredClone(before);
+      const key = requireElement<HTMLInputElement>(root, '[data-testid="item-key-input"]');
+      const size = requireElement<HTMLInputElement>(root, '[data-testid="item-size-input"]');
+      setInputValue(key, '   ');
+      setInputValue(size, '0');
+
+      submitOperation(root, 'add');
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance['errors']()).toMatchObject({
+        key: 'Enter a key.',
+        size: 'Size must be between 1 and 100.',
+      });
+      expect(root.querySelectorAll('.error')).toHaveLength(2);
+      expect(root.textContent).toContain('Enter a key.');
+      expect(root.textContent).toContain('Size must be between 1 and 100.');
+      expect(key.getAttribute('aria-invalid')).toBe('true');
+      expect(size.getAttribute('aria-invalid')).toBe('true');
+      expect(key.value).toBe('   ');
+      expect(size.value).toBe('0');
+      expect(fixture.componentInstance['snapshot']()).toBe(before);
+      expect(before).toEqual(saved);
+
+      setInputValue(key, 'B');
+      fixture.detectChanges();
+
+      expect(key.getAttribute('aria-invalid')).toBe('false');
+      expect(size.getAttribute('aria-invalid')).toBe('true');
+      expect(root.querySelectorAll('.error')).toHaveLength(1);
+      expect(root.querySelector('.error')?.textContent).toContain('Size');
+      expect(fixture.componentInstance['snapshot']()).toBe(before);
+
+      submitOperation(root, 'add');
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance['snapshot']()).toBe(before);
+      expect(root.querySelectorAll('[data-testid="event-list"] > li')).toHaveLength(1);
+
+      setInputValue(size, '3');
+      fixture.detectChanges();
+
+      expect(root.querySelector('.error')).toBeNull();
+      expect(fixture.componentInstance['snapshot']()).toBe(before);
+      submitOperation(root, 'add');
+      fixture.detectChanges();
+
+      expect(root.querySelectorAll('[data-testid="card"]')).toHaveLength(2);
+      expect(root.querySelectorAll('[data-testid="event-list"] > li')).toHaveLength(2);
+      expect(key.value).toBe('');
+      expect(size.value).toBe('');
+      expect(before).toEqual(saved);
+    });
+
+    it('clears an edited duplicate-key error but rejects a still-duplicate key on resubmission', () => {
+      prepareOperation(root);
+      submitOperation(root, 'add');
+      fixture.detectChanges();
+      const before = fixture.componentInstance['snapshot']();
+      const key = requireElement<HTMLInputElement>(root, '[data-testid="item-key-input"]');
+      const size = requireElement<HTMLInputElement>(root, '[data-testid="item-size-input"]');
+      setInputValue(key, 'A');
+      setInputValue(size, '3');
+      submitOperation(root, 'add');
+      fixture.detectChanges();
+      expect(root.querySelector('.error')?.textContent).toContain('already in the cache');
+
+      setInputValue(key, ' A ');
+      fixture.detectChanges();
+
+      expect(root.querySelector('.error')).toBeNull();
+      expect(fixture.componentInstance['snapshot']()).toBe(before);
+      submitOperation(root, 'add');
+      fixture.detectChanges();
+
+      expect(root.querySelector('.error')?.textContent).toContain('already in the cache');
+      expect(fixture.componentInstance['snapshot']()).toBe(before);
+      expect(key.value).toBe(' A ');
+      expect(size.value).toBe('3');
+
+      setInputValue(key, 'B');
+      submitOperation(root, 'add');
+      fixture.detectChanges();
+
+      expect(root.querySelector('.error')).toBeNull();
+      expect(root.querySelectorAll('[data-testid="card"]')).toHaveLength(2);
+      expect(root.querySelectorAll('[data-testid="event-list"] > li')).toHaveLength(2);
+    });
+
+    it('revalidates an edited oversized item without evicting until a valid submission', () => {
+      setInputValue(requireElement<HTMLInputElement>(root, '[data-testid="capacity-input"]'), '2');
+      prepareOperation(root, '2');
+      submitOperation(root, 'add');
+      fixture.detectChanges();
+      const before = fixture.componentInstance['snapshot']();
+      const saved = structuredClone(before);
+      const key = requireElement<HTMLInputElement>(root, '[data-testid="item-key-input"]');
+      const size = requireElement<HTMLInputElement>(root, '[data-testid="item-size-input"]');
+      setInputValue(key, 'B');
+      setInputValue(size, '3');
+      submitOperation(root, 'add');
+      fixture.detectChanges();
+      expect(root.querySelector('.error')?.textContent).toContain('larger than');
+
+      setInputValue(size, '4');
+      fixture.detectChanges();
+
+      expect(root.querySelector('.error')).toBeNull();
+      expect(fixture.componentInstance['snapshot']()).toBe(before);
+      submitOperation(root, 'add');
+      fixture.detectChanges();
+
+      expect(root.querySelector('.error')?.textContent).toContain('larger than');
+      expect(size.value).toBe('4');
+      expect(fixture.componentInstance['snapshot']()).toBe(before);
+      expect(before).toEqual(saved);
+      expect(requireElement(root, '[data-testid="evictions"]').textContent?.trim()).toBe('0');
+
+      setInputValue(size, '2');
+      submitOperation(root, 'add');
+      fixture.detectChanges();
+
+      expect(root.querySelector('.error')).toBeNull();
+      expect(root.querySelectorAll('[data-testid="card"]')).toHaveLength(1);
+      expect(requireElement(root, '[data-testid="card"]').textContent).toContain('B');
+      expect(requireElement(root, '[data-testid="evictions"]').textContent?.trim()).toBe('1');
+      expect(root.querySelectorAll('[data-testid="event-list"] > li')).toHaveLength(2);
+      expect(before).toEqual(saved);
+    });
+  });
+
   it('does not announce an old event when reselecting the active strategy', () => {
     prepareOperation(root);
     clickButton(root, '[data-testid="add-button"]');
