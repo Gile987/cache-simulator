@@ -18,8 +18,8 @@
             <ul class="evictions" data-testid="eviction-list">
               @for (eviction of event.evictions; track eviction.key) {
                 <li>
-                  Evicted <strong>{{ eviction.key }}</strong> ({{ eviction.size }} units) because
-                  {{ eviction.reason }}.
+                  Evicted <strong>{{ eviction.key }}</strong> ({{ eviction.size }}
+                  {{ unitLabel(eviction.size) }}) because {{ eviction.reason }}.
                 </li>
               }
             </ul>

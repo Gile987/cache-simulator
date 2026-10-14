@@ -253,30 +253,41 @@ export function runCommand(snapshot: EngineSnapshot, command: EngineCommand): Co
   };
 }
 
+export function pluralize(count: number, noun: string): string {
+  return count === 1 ? noun : `${noun}s`;
+}
+
+export function unitLabel(size: number): string {
+  return pluralize(size, 'unit');
+}
+
+export function formatUsage(used: number, capacity: number): string {
+  return `Usage: ${used} / ${capacity}.`;
+}
+
 export function describeEvent(event: CacheEvent): string {
   switch (event.kind) {
     case 'access':
       switch (event.result) {
         case 'hit':
         case 'miss':
-          return `Access "${event.key}": ${event.result}. Usage: ${event.used} / ${event.capacity}.`;
+          return `Access "${event.key}": ${event.result}. ${formatUsage(event.used, event.capacity)}`;
         default:
           return assertNever(event.result);
       }
     case 'strategy':
       return `Strategy changed from ${event.from} to ${event.to}.`;
     case 'insert': {
-      const unit = (size: number): string => (size === 1 ? 'unit' : 'units');
       const evictionText =
         event.evictions.length === 0
           ? 'No eviction was needed.'
           : event.evictions
               .map(
                 (eviction) =>
-                  `Evicted "${eviction.key}" (${eviction.size} ${unit(eviction.size)}) because ${eviction.reason}.`,
+                  `Evicted "${eviction.key}" (${eviction.size} ${unitLabel(eviction.size)}) because ${eviction.reason}.`,
               )
               .join(' ');
-      return `Added "${event.key}" (${event.size} ${unit(event.size)}). ${evictionText} Usage: ${event.used} / ${event.capacity}.`;
+      return `Added "${event.key}" (${event.size} ${unitLabel(event.size)}). ${evictionText} ${formatUsage(event.used, event.capacity)}`;
     }
     default:
       return assertNever(event);

@@ -1,10 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import type {
-  AccessEvent,
-  CacheEvent,
-  InsertEvent,
-  StrategyEvent,
-} from '../../cache-engine/models';
+import type { CacheEvent, InsertEvent } from '../../cache-engine/models';
+import { describeEvent, formatUsage, pluralize, unitLabel } from '../../cache-engine/engine';
 import { assertNever } from '../../cache-engine/assert-never';
 
 @Component({
@@ -16,12 +12,13 @@ import { assertNever } from '../../cache-engine/assert-never';
 export class EventLog {
   readonly events = input.required<readonly CacheEvent[]>();
 
+  protected readonly unitLabel = unitLabel;
+
   protected summary(event: CacheEvent): string {
     switch (event.kind) {
       case 'access':
-        return this.accessSummary(event);
       case 'strategy':
-        return this.strategySummary(event);
+        return describeEvent(event);
       case 'insert':
         return this.insertSummary(event);
       default:
@@ -29,27 +26,10 @@ export class EventLog {
     }
   }
 
-  private accessSummary(event: AccessEvent): string {
-    switch (event.result) {
-      case 'hit':
-      case 'miss':
-        return `Access "${event.key}": ${event.result}. Usage: ${event.used} / ${event.capacity}.`;
-      default:
-        return assertNever(event.result);
-    }
-  }
-
-  private strategySummary(event: StrategyEvent): string {
-    return `Strategy changed from ${event.from} to ${event.to}.`;
-  }
-
   private insertSummary(event: InsertEvent): string {
-    const unit = event.size === 1 ? 'unit' : 'units';
-    const head = `Added "${event.key}" (${event.size} ${unit}).`;
-    const tail = `Usage: ${event.used} / ${event.capacity}.`;
-    if (event.evictions.length === 0) {
-      return `${head} No eviction was needed. ${tail}`;
-    }
-    return `${head} ${event.evictions.length} eviction${event.evictions.length === 1 ? '' : 's'}. ${tail}`;
+    const count = event.evictions.length;
+    const evictionText =
+      count === 0 ? 'No eviction was needed.' : `${count} ${pluralize(count, 'eviction')}.`;
+    return `Added "${event.key}" (${event.size} ${unitLabel(event.size)}). ${evictionText} ${formatUsage(event.used, event.capacity)}`;
   }
 }
