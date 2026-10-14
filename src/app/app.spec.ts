@@ -433,6 +433,52 @@ describe('App', () => {
     expect(requireElement(root, '[data-testid="usage"]').textContent).toContain('10 / 10');
   });
 
+  it('marks each guided step as done, next, or pending with a matching tag', () => {
+    clickButton(root, '[data-testid="load-example-button"]');
+    fixture.detectChanges();
+
+    const steps = (): HTMLElement[] =>
+      Array.from(root.querySelectorAll<HTMLElement>('[data-testid="example-steps"] > li'));
+    const statuses = (): (string | null)[] =>
+      steps().map((step) => step.getAttribute('data-status'));
+
+    expect(statuses()).toEqual([
+      'next',
+      'pending',
+      'pending',
+      'pending',
+      'pending',
+      'pending',
+      'pending',
+      'pending',
+    ]);
+    expect(steps()[0]?.querySelector('.step-tag')?.textContent).toBe('next');
+    expect(steps()[1]?.querySelector('.step-tag')).toBeNull();
+
+    clickButton(root, '[data-testid="next-step-button"]');
+    fixture.detectChanges();
+
+    expect(statuses()[0]).toBe('done');
+    expect(statuses()[1]).toBe('next');
+    expect(steps()[0]?.querySelector('.step-tag')?.textContent).toBe('done');
+    expect(steps()[1]?.querySelector('.step-tag')?.textContent).toBe('next');
+
+    clickButton(root, '[data-testid="reset-button"]');
+    fixture.detectChanges();
+
+    expect(statuses()).toEqual([
+      'pending',
+      'pending',
+      'pending',
+      'pending',
+      'pending',
+      'pending',
+      'pending',
+      'pending',
+    ]);
+    expect(root.querySelector('.step-tag')).toBeNull();
+  });
+
   it('retains engine-rejected Add drafts and clears only the accepted form after correction', () => {
     prepareOperation(root);
     clickButton(root, '[data-testid="add-button"]');
