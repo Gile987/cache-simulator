@@ -4,10 +4,11 @@
   <div class="field">
     <label for="strategy">Strategy</label>
     <select
+      #strategySelect
       id="strategy"
       [value]="strategy()"
       [disabled]="exampleActive()"
-      (change)="changeStrategy($event)"
+      (change)="changeStrategy(strategySelect)"
     >
       @for (option of strategies; track option) {
         <option [value]="option">{{ option }}</option>
@@ -19,6 +20,7 @@
   <div class="field">
     <label for="capacity">Capacity (abstract units)</label>
     <input
+      #capacityInput
       id="capacity"
       type="number"
       min="1"
@@ -29,7 +31,7 @@
       [value]="drafts().capacity"
       [disabled]="!canEditCapacity()"
       [attr.aria-invalid]="errors().capacity !== null"
-      (input)="editDraft('capacity', $event)"
+      (input)="editDraft('capacity', capacityInput.value)"
       (change)="requestOperation({ type: 'setCapacity' })"
     />
     @if (errors().capacity; as message) {
@@ -51,6 +53,7 @@
         <div class="field">
           <label for="item-key">Key</label>
           <input
+            #itemKeyInput
             id="item-key"
             type="text"
             maxlength="40"
@@ -59,7 +62,7 @@
             [value]="drafts().itemKey"
             [disabled]="exampleActive()"
             [attr.aria-invalid]="errors().key !== null"
-            (input)="editDraft('itemKey', $event)"
+            (input)="editDraft('itemKey', itemKeyInput.value)"
           />
           @if (errors().key; as message) {
             <p class="error" role="alert">{{ message }}</p>
@@ -68,6 +71,7 @@
         <div class="field">
           <label for="item-size">Size</label>
           <input
+            #itemSizeInput
             id="item-size"
             type="number"
             min="1"
@@ -78,7 +82,7 @@
             [value]="drafts().itemSize"
             [disabled]="exampleActive()"
             [attr.aria-invalid]="errors().size !== null"
-            (input)="editDraft('itemSize', $event)"
+            (input)="editDraft('itemSize', itemSizeInput.value)"
           />
           @if (errors().size; as message) {
             <p class="error" role="alert">{{ message }}</p>
@@ -103,6 +107,7 @@
         <div class="field">
           <label for="access-key">Key</label>
           <input
+            #accessKeyInput
             id="access-key"
             type="text"
             maxlength="40"
@@ -111,7 +116,7 @@
             [value]="drafts().accessKey"
             [disabled]="exampleActive()"
             [attr.aria-invalid]="errors().access !== null"
-            (input)="editDraft('accessKey', $event)"
+            (input)="editDraft('accessKey', accessKeyInput.value)"
           />
           @if (errors().access; as message) {
             <p class="error" role="alert">{{ message }}</p>
