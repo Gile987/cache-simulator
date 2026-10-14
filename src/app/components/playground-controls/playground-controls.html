@@ -1,0 +1,144 @@
+<section class="panel" aria-labelledby="config-heading">
+  <h2 id="config-heading">Configuration and controls</h2>
+
+  <div class="field">
+    <label for="strategy">Strategy</label>
+    <select
+      id="strategy"
+      [value]="strategy()"
+      [disabled]="exampleActive()"
+      (change)="changeStrategy($event)"
+    >
+      @for (option of strategies; track option) {
+        <option [value]="option">{{ option }}</option>
+      }
+    </select>
+    <p class="help">{{ strategyInfo() }}</p>
+  </div>
+
+  <div class="field">
+    <label for="capacity">Capacity (abstract units)</label>
+    <input
+      id="capacity"
+      type="number"
+      min="1"
+      max="100"
+      step="1"
+      inputmode="numeric"
+      data-testid="capacity-input"
+      [value]="drafts().capacity"
+      [disabled]="!canEditCapacity()"
+      [attr.aria-invalid]="errors().capacity !== null"
+      (input)="editDraft('capacity', $event)"
+      (change)="requestOperation({ type: 'setCapacity' })"
+    />
+    @if (errors().capacity; as message) {
+      <p class="error" role="alert">{{ message }}</p>
+    } @else if (!canEditCapacity()) {
+      <p class="help">Reset to change capacity.</p>
+    }
+  </div>
+
+  <form
+    aria-labelledby="add-heading"
+    data-testid="add-form"
+    novalidate
+    (submit)="$event.preventDefault(); requestOperation({ type: 'add' })"
+  >
+    <fieldset class="group">
+      <legend id="add-heading">Add item</legend>
+      <div class="row">
+        <div class="field">
+          <label for="item-key">Key</label>
+          <input
+            id="item-key"
+            type="text"
+            maxlength="40"
+            autocomplete="off"
+            data-testid="item-key-input"
+            [value]="drafts().itemKey"
+            [disabled]="exampleActive()"
+            [attr.aria-invalid]="errors().key !== null"
+            (input)="editDraft('itemKey', $event)"
+          />
+          @if (errors().key; as message) {
+            <p class="error" role="alert">{{ message }}</p>
+          }
+        </div>
+        <div class="field">
+          <label for="item-size">Size</label>
+          <input
+            id="item-size"
+            type="number"
+            min="1"
+            max="100"
+            step="1"
+            inputmode="numeric"
+            data-testid="item-size-input"
+            [value]="drafts().itemSize"
+            [disabled]="exampleActive()"
+            [attr.aria-invalid]="errors().size !== null"
+            (input)="editDraft('itemSize', $event)"
+          />
+          @if (errors().size; as message) {
+            <p class="error" role="alert">{{ message }}</p>
+          }
+        </div>
+      </div>
+      <button type="submit" class="primary" data-testid="add-button" [disabled]="exampleActive()">
+        Add item
+      </button>
+    </fieldset>
+  </form>
+
+  <form
+    aria-labelledby="access-heading"
+    data-testid="access-form"
+    novalidate
+    (submit)="$event.preventDefault(); requestOperation({ type: 'access' })"
+  >
+    <fieldset class="group">
+      <legend id="access-heading">Access item</legend>
+      <div class="row">
+        <div class="field">
+          <label for="access-key">Key</label>
+          <input
+            id="access-key"
+            type="text"
+            maxlength="40"
+            autocomplete="off"
+            data-testid="access-key-input"
+            [value]="drafts().accessKey"
+            [disabled]="exampleActive()"
+            [attr.aria-invalid]="errors().access !== null"
+            (input)="editDraft('accessKey', $event)"
+          />
+          @if (errors().access; as message) {
+            <p class="error" role="alert">{{ message }}</p>
+          }
+        </div>
+      </div>
+      <button
+        type="submit"
+        class="primary"
+        data-testid="access-button"
+        [disabled]="exampleActive()"
+      >
+        Access
+      </button>
+    </fieldset>
+  </form>
+
+  <div class="actions">
+    <button type="button" data-testid="reset-button" (click)="requestOperation({ type: 'reset' })">
+      Reset simulation
+    </button>
+    <button
+      type="button"
+      data-testid="load-example-button"
+      (click)="requestOperation({ type: 'loadExample' })"
+    >
+      Load guided example
+    </button>
+  </div>
+</section>

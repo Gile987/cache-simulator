@@ -201,6 +201,7 @@ describe('App', () => {
       );
 
       clickButton(root, '[data-testid="reset-button"]');
+      fixture.detectChanges();
       prepareOperation(root);
       submitOperation(root, operation);
       fixture.detectChanges();
@@ -424,6 +425,126 @@ describe('App', () => {
     expect(root.querySelector('[data-testid="example-complete"]')).not.toBeNull();
     expect(nextButton().disabled).toBe(true);
     expect(requireElement(root, '[data-testid="hits"]').textContent).toContain('4');
+    expect(requireElement(root, '[data-testid="usage"]').textContent).toContain('10 / 10');
+  });
+
+  it('retains engine-rejected Add drafts and clears only the accepted form after correction', () => {
+    prepareOperation(root);
+    clickButton(root, '[data-testid="add-button"]');
+    fixture.detectChanges();
+    const key = requireElement<HTMLInputElement>(root, '[data-testid="item-key-input"]');
+    const size = requireElement<HTMLInputElement>(root, '[data-testid="item-size-input"]');
+    setInputValue(key, 'A');
+    setInputValue(size, '3');
+    fixture.detectChanges();
+
+    submitOperation(root, 'add');
+    fixture.detectChanges();
+
+    expect(key.value).toBe('A');
+    expect(size.value).toBe('3');
+    expect(root.querySelector('.error')?.textContent).toContain('already in the cache');
+    expect(root.querySelectorAll('[data-testid="card"]')).toHaveLength(1);
+    expect(root.querySelectorAll('[data-testid="event-list"] > li')).toHaveLength(1);
+
+    setInputValue(key, 'B');
+    submitOperation(root, 'add');
+    fixture.detectChanges();
+
+    expect(key.value).toBe('');
+    expect(size.value).toBe('');
+    expect(root.querySelector('.error')).toBeNull();
+    expect(root.querySelectorAll('[data-testid="card"]')).toHaveLength(2);
+    expect(root.querySelectorAll('[data-testid="event-list"] > li')).toHaveLength(2);
+    expect(requireElement<HTMLInputElement>(root, '[data-testid="access-key-input"]').value).toBe(
+      'missing',
+    );
+  });
+
+  it('keeps an Access draft when accessing a resident through its card', () => {
+    prepareOperation(root);
+    clickButton(root, '[data-testid="add-button"]');
+    fixture.detectChanges();
+
+    clickButton(root, '[data-testid="card"] button');
+    fixture.detectChanges();
+
+    expect(requireElement<HTMLInputElement>(root, '[data-testid="access-key-input"]').value).toBe(
+      'missing',
+    );
+    expect(requireElement(root, '[data-testid="hits"]').textContent?.trim()).toBe('1');
+    expect(root.querySelectorAll('[data-testid="event-list"] > li')).toHaveLength(2);
+
+    submitOperation(root, 'access');
+    fixture.detectChanges();
+
+    expect(requireElement<HTMLInputElement>(root, '[data-testid="access-key-input"]').value).toBe(
+      '',
+    );
+    expect(requireElement(root, '[data-testid="misses"]').textContent?.trim()).toBe('1');
+    expect(root.querySelectorAll('[data-testid="event-list"] > li')).toHaveLength(3);
+  });
+
+  it('clears rejected drafts and errors on Reset while retaining the last valid capacity', () => {
+    const capacity = requireElement<HTMLInputElement>(root, '[data-testid="capacity-input"]');
+    setInputValue(capacity, '20');
+    capacity.dispatchEvent(new Event('change'));
+    setInputValue(capacity, '0');
+    prepareOperation(root);
+    submitOperation(root, 'add');
+    fixture.detectChanges();
+    expect(root.querySelector('.error')?.textContent).toContain('Capacity');
+
+    clickButton(root, '[data-testid="reset-button"]');
+    fixture.detectChanges();
+
+    expect(capacity.value).toBe('20');
+    expect(capacity.disabled).toBe(false);
+    expect(root.querySelector('.error')).toBeNull();
+    for (const id of ['item-key', 'item-size', 'access-key']) {
+      expect(requireElement<HTMLInputElement>(root, `[data-testid="${id}-input"]`).value).toBe('');
+    }
+    expect(root.querySelector('[data-testid="log-empty"]')).not.toBeNull();
+    expect(requireElement(root, '[data-testid="usage"]').textContent).toContain('0 / 20');
+  });
+
+  it('loads the guided example with the selected strategy, retained drafts, and cleared errors', () => {
+    performOperation(root, 'strategy');
+    prepareOperation(root);
+    setInputValue(requireElement<HTMLInputElement>(root, '[data-testid="item-size-input"]'), '0');
+    submitOperation(root, 'add');
+    fixture.detectChanges();
+    expect(root.querySelector('.error')?.textContent).toContain('Size');
+
+    clickButton(root, '[data-testid="load-example-button"]');
+    fixture.detectChanges();
+
+    expect(requireElement<HTMLSelectElement>(root, '#strategy').value).toBe('LFU');
+    expect(requireElement<HTMLInputElement>(root, '[data-testid="capacity-input"]').value).toBe(
+      '10',
+    );
+    expect(requireElement<HTMLInputElement>(root, '[data-testid="item-key-input"]').value).toBe(
+      'A',
+    );
+    expect(requireElement<HTMLInputElement>(root, '[data-testid="item-size-input"]').value).toBe(
+      '0',
+    );
+    expect(requireElement<HTMLInputElement>(root, '[data-testid="access-key-input"]').value).toBe(
+      'missing',
+    );
+    expect(root.querySelector('.error')).toBeNull();
+    expect(root.querySelector('[data-testid="log-empty"]')).not.toBeNull();
+    expect(requireElement(root, '[data-testid="status"]').textContent).toContain('loaded with LFU');
+
+    for (let index = 0; index < 8; index += 1) {
+      clickButton(root, '[data-testid="next-step-button"]');
+      fixture.detectChanges();
+    }
+
+    expect(root.querySelector('[data-testid="example-complete"]')).not.toBeNull();
+    const finalEvent = requireElement(root, '[data-testid="event-list"] > li').textContent;
+    expect(finalEvent).toContain('Step 8');
+    expect(finalEvent).toContain('Evicted B');
     expect(requireElement(root, '[data-testid="usage"]').textContent).toContain('10 / 10');
   });
 });

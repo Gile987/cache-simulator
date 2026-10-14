@@ -27,7 +27,7 @@ npm test -- --watch=false   # run the test suite once
 ## How to use it
 
 1. Choose a strategy (FIFO, LRU, or LFU) and a capacity. Capacity can only be changed while the simulation is at step 0; after the first accepted operation it is locked until you reset. Before accepting the first Add, Access, or strategy change, the app validates and applies the capacity currently entered, even if the field has not lost focus. Invalid capacity blocks the operation and stays editable so you can correct it.
-2. Add items with a key and a size, and access keys (existing or missing) with the Access controls or the per-card buttons.
+2. Add items with a key and a size, and access keys (existing or missing) with the Access controls or the per-card buttons. Submit either form by pressing Enter in its fields or clicking its submit button; each submission performs one operation without reloading the page.
 3. Watch the segmented capacity bar, the insertion-order item cards, the separate "Eviction priority" list, the statistics, and the event log.
 4. Use **Load guided example** for a deterministic eight-step scenario, then advance it one step at a time with **Next step**.
 
@@ -62,16 +62,30 @@ Capacity is 10 and the selected strategy is retained. The eight steps are: Add A
 - `src/app/cache-engine/` — pure TypeScript, independent of Angular: models, validation, priority calculation, state transitions, guided-example commands, and event descriptions.
 - `src/app/components/cache-view/` — segmented capacity bar, insertion-order item cards, and the eviction priority list.
 - `src/app/components/event-log/` — typed event presentation.
-- `src/app/app.ts` — container that holds signals for simulation state, forms, validation, and example progress, and derives usage, statistics, and priority.
+- `src/app/components/playground-controls/` — standalone Configuration and controls panel with native Add and Access forms, component-scoped styles, typed signal inputs, and typed draft-edit and operation outputs.
+- `src/app/app.ts` — container that owns simulation state, raw form drafts, field errors, validation, and example progress, executes commands, and derives usage, statistics, and priority.
 
 State is stored once and derived values (used capacity, hit rate, priority order) are computed rather than duplicated. The engine is written with straightforward sorting and loops because capacity is deliberately small; linked lists and heaps would add complexity for no benefit.
+
+`PlaygroundControls` renders the parent's drafts and errors and emits edits and operation requests. `App` keeps a single source for draft and error state so capacity validation, card accesses, Reset, and guided mode stay coordinated. Draft updates replace their objects rather than mutating inputs. Form submission requests execution; the parent clears only the submitted fields after an explicit successful command result and preserves them on rejection.
 
 ## Tests
 
 `npx ng test --watch=false` runs:
 
 - **Engine tests** — insertion without eviction, exact fits, multi-item eviction order, rejected operations leaving state untouched, hit/miss behavior, all three priority policies and their tie-breakers, fresh metadata after re-insertion, strategy switches, `__proto__` as an ordinary key, the guided example under every strategy, zero-access hit rate, capacity invariants, input immutability, and the 50-event log cap.
-- **UI tests** — add/access flows, field validation, capacity locking and reset, and the guided-example step controls.
+- **UI tests** — controls-component requests, raw draft edits and input immutability, submission cancellation, disabled controls, and parent integration for add/access flows, field validation, capacity locking and reset, rejected-draft recovery, card access, and the guided-example step controls.
+
+### Manual browser checks
+
+Browser checks are performed manually by the user; automated verification uses the existing unit tests and production build.
+
+1. Run `npm start` and open `http://localhost:4200/`. Check the Configuration and controls panel at desktop width and a narrow width around 390 px. Fields and buttons should remain usable without horizontal scrolling. Use Tab to confirm visible keyboard focus.
+2. Enter capacity `0`, key `A`, and size `3`. Press Enter in the Add key field. Expect a capacity error, retained drafts, no cache entries, and no logged operations. Correct capacity to `10` and press Enter in the size field. Expect one item and one Step 1 event, cleared Add fields, locked capacity, and no page reload.
+3. Enter `A` and size `3` again and click Add item. Expect a duplicate-key error, retained drafts, and no new event. Change the key to `B` and press Enter. Expect one additional entry and event, cleared Add fields, and no remaining Add error. Also check empty, fractional, and out-of-range sizes display the app's custom errors without adding an item.
+4. Enter `A` in Access and press Enter. Expect exactly one hit and one new event. Click Access with a missing key and expect exactly one miss. Enter another Access draft and click a resident card's Access button: expect a hit while the Access draft stays intact. Submitting an empty Access key should show an error without recording a miss.
+5. Click Reset simulation. Expect empty entries and statistics, cleared drafts and errors, and an editable capacity retaining its last accepted value. Set capacity to `20` and leave the field, then enter `0` and attempt Add. Reset again and confirm capacity returns to `20`.
+6. Select LFU and click Load guided example. Expect capacity `10`, cleared errors, and disabled manual inputs and submit buttons with visible disabled styling. Advance all eight steps: expect B evicted, usage `10 / 10`, four hits, zero misses, and a disabled Next step button. Reset should restore enabled manual controls.
 
 ## Design decisions
 
@@ -80,6 +94,7 @@ State is stored once and derived values (used capacity, hit rate, priority order
 - One logical step counter replaces wall-clock time so runs are deterministic and reproducible.
 - Signals with OnPush change detection and `@if`/`@for` with stable tracking keys keep rendering predictable.
 - Native HTML controls and SCSS avoid UI, chart, canvas, and animation dependencies.
+- Add and Access use separate native forms with Angular submit listeners that prevent page navigation. Signal drafts retain raw input strings for custom validation; `novalidate` lets the app show its own field errors for invalid numeric values.
 
 ## Limitations and deferred work
 

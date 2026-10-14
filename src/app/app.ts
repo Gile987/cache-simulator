@@ -4,8 +4,6 @@ import {
   CacheState,
   EngineCommand,
   EngineSnapshot,
-  STRATEGIES,
-  STRATEGY_INFO,
   ValidationIssue,
 } from './cache-engine/models';
 import {
@@ -20,17 +18,22 @@ import { GUIDED_CAPACITY, GUIDED_STEPS } from './cache-engine/guided-example';
 import { parseIntegerField, validateKey } from './cache-engine/validation';
 import { CacheView } from './components/cache-view/cache-view';
 import { EventLog } from './components/event-log/event-log';
-import { readInputValue } from './ui/dom';
+import { PlaygroundControls } from './components/playground-controls/playground-controls';
+import type {
+  ControlDrafts,
+  ControlErrors,
+  ControlRequest,
+  DraftChange,
+} from './components/playground-controls/playground-controls';
 
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CacheView, EventLog],
+  imports: [CacheView, EventLog, PlaygroundControls],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
 export class App {
-  protected readonly strategies = STRATEGIES;
   protected readonly exampleSteps = GUIDED_STEPS;
 
   protected readonly snapshot = signal<EngineSnapshot>({
@@ -38,15 +41,18 @@ export class App {
     events: [],
   });
 
-  protected readonly itemKey = signal('');
-  protected readonly itemSize = signal('');
-  protected readonly accessKey = signal('');
-  protected readonly capacityDraft = signal('10');
-
-  protected readonly addKeyError = signal<string | null>(null);
-  protected readonly addSizeError = signal<string | null>(null);
-  protected readonly accessError = signal<string | null>(null);
-  protected readonly capacityError = signal<string | null>(null);
+  protected readonly drafts = signal<ControlDrafts>({
+    itemKey: '',
+    itemSize: '',
+    accessKey: '',
+    capacity: '10',
+  });
+  protected readonly errors = signal<ControlErrors>({
+    key: null,
+    size: null,
+    access: null,
+    capacity: null,
+  });
   protected readonly statusMessage = signal('');
 
   protected readonly exampleActive = signal(false);
@@ -58,7 +64,6 @@ export class App {
   protected readonly priority = computed<readonly CacheEntry[]>(() =>
     priorityOrder(this.state().entries, this.state().strategy),
   );
-  protected readonly strategyInfo = computed(() => STRATEGY_INFO[this.state().strategy]);
   protected readonly rateLabel = computed(() => {
     const rate = hitRate(this.state());
     return rate === null ? '—' : `${(rate * 100).toFixed(1)}%`;
@@ -70,63 +75,64 @@ export class App {
     () => this.exampleActive() && this.exampleCursor() >= GUIDED_STEPS.length,
   );
 
-  protected onStrategyChange(event: Event): void {
-    if (this.exampleActive()) {
+  protected onDraftChange(change: DraftChange): void {
+    if (this.exampleActive() || (change.field === 'capacity' && !this.canEditCapacity())) {
       return;
     }
-    const value = readInputValue(event);
-    const strategy = STRATEGIES.find((candidate) => candidate === value);
-    if (strategy === undefined) {
+    this.drafts.update((drafts) => ({ ...drafts, [change.field]: change.value }));
+  }
+
+  protected onControlRequest(request: ControlRequest): void {
+    if (request.type !== 'reset' && request.type !== 'loadExample' && this.exampleActive()) {
       return;
     }
-    if (!this.applyCapacity()) {
-      const target = event.target;
-      if (target instanceof HTMLSelectElement) {
-        target.value = this.state().strategy;
-      }
-      return;
+    switch (request.type) {
+      case 'add':
+        this.addItem();
+        break;
+      case 'access':
+        this.accessItem();
+        break;
+      case 'setStrategy':
+        if (this.applyCapacity()) {
+          this.apply({ type: 'setStrategy', strategy: request.strategy });
+        }
+        break;
+      case 'setCapacity':
+        this.applyCapacity();
+        break;
+      case 'reset':
+        this.reset();
+        break;
+      case 'loadExample':
+        this.loadExample();
+        break;
     }
-    this.apply({ type: 'setStrategy', strategy });
-  }
-
-  protected onItemKeyInput(event: Event): void {
-    this.itemKey.set(readInputValue(event));
-  }
-
-  protected onItemSizeInput(event: Event): void {
-    this.itemSize.set(readInputValue(event));
-  }
-
-  protected onAccessKeyInput(event: Event): void {
-    this.accessKey.set(readInputValue(event));
-  }
-
-  protected onCapacityInput(event: Event): void {
-    this.capacityDraft.set(readInputValue(event));
   }
 
   protected addItem(): void {
     if (this.exampleActive() || !this.applyCapacity()) {
       return;
     }
-    this.addKeyError.set(null);
-    this.addSizeError.set(null);
+    this.errors.update((errors) => ({ ...errors, key: null, size: null }));
 
-    const sizeResult = parseIntegerField(this.itemSize(), 'size', 'Size');
+    const drafts = this.drafts();
+    const sizeResult = parseIntegerField(drafts.itemSize, 'size', 'Size');
     if (sizeResult.issue !== null || sizeResult.value === null) {
-      this.addSizeError.set(sizeResult.issue?.message ?? 'Size is invalid.');
+      this.errors.update((errors) => ({
+        ...errors,
+        size: sizeResult.issue?.message ?? 'Size is invalid.',
+      }));
       return;
     }
-    const keyIssue = validateKey(this.itemKey());
+    const keyIssue = validateKey(drafts.itemKey);
     if (keyIssue !== null) {
-      this.addKeyError.set(keyIssue.message);
+      this.errors.update((errors) => ({ ...errors, key: keyIssue.message }));
       return;
     }
 
-    this.apply({ type: 'add', key: this.itemKey(), size: sizeResult.value });
-    if (this.addKeyError() === null && this.addSizeError() === null) {
-      this.itemKey.set('');
-      this.itemSize.set('');
+    if (this.apply({ type: 'add', key: drafts.itemKey, size: sizeResult.value })) {
+      this.drafts.update((drafts) => ({ ...drafts, itemKey: '', itemSize: '' }));
     }
   }
 
@@ -134,11 +140,10 @@ export class App {
     if (this.exampleActive() || !this.applyCapacity()) {
       return;
     }
-    this.accessError.set(null);
-    const rawKey = key ?? this.accessKey();
-    this.apply({ type: 'access', key: rawKey });
-    if (this.accessError() === null && key === undefined) {
-      this.accessKey.set('');
+    this.errors.update((errors) => ({ ...errors, access: null }));
+    const accepted = this.apply({ type: 'access', key: key ?? this.drafts().accessKey });
+    if (accepted && key === undefined) {
+      this.drafts.update((drafts) => ({ ...drafts, accessKey: '' }));
     }
   }
 
@@ -146,24 +151,28 @@ export class App {
     if (!this.canEditCapacity()) {
       return true;
     }
-    this.capacityError.set(null);
-    const result = parseIntegerField(this.capacityDraft(), 'capacity', 'Capacity');
+    this.errors.update((errors) => ({ ...errors, capacity: null }));
+    const result = parseIntegerField(this.drafts().capacity, 'capacity', 'Capacity');
     if (result.issue !== null || result.value === null) {
-      this.capacityError.set(result.issue?.message ?? 'Capacity is invalid.');
+      this.errors.update((errors) => ({
+        ...errors,
+        capacity: result.issue?.message ?? 'Capacity is invalid.',
+      }));
       return false;
     }
-    this.apply({ type: 'setCapacity', capacity: result.value });
-    return this.capacityError() === null;
+    return this.apply({ type: 'setCapacity', capacity: result.value });
   }
 
   protected reset(): void {
     const outcome = this.run({ type: 'reset' });
     this.exampleActive.set(false);
     this.exampleCursor.set(0);
-    this.itemKey.set('');
-    this.itemSize.set('');
-    this.accessKey.set('');
-    this.capacityDraft.set(String(outcome.capacity));
+    this.drafts.set({
+      itemKey: '',
+      itemSize: '',
+      accessKey: '',
+      capacity: String(outcome.capacity),
+    });
     this.clearErrors();
     this.statusMessage.set('Simulation reset. Manual playground ready.');
   }
@@ -173,7 +182,7 @@ export class App {
     this.snapshot.set({ state: createInitialState(strategy, GUIDED_CAPACITY), events: [] });
     this.exampleActive.set(true);
     this.exampleCursor.set(0);
-    this.capacityDraft.set(String(GUIDED_CAPACITY));
+    this.drafts.update((drafts) => ({ ...drafts, capacity: String(GUIDED_CAPACITY) }));
     this.clearErrors();
     this.statusMessage.set(`Guided example loaded with ${strategy}. Use Next step to run it.`);
   }
@@ -216,38 +225,28 @@ export class App {
     return result.snapshot.state;
   }
 
-  private apply(command: EngineCommand): void {
+  private apply(command: EngineCommand): boolean {
     const snapshot = this.snapshot();
     const result = runCommand(snapshot, command);
     if (result.issues.length > 0) {
       this.routeIssues(result.issues);
-      return;
+      return false;
     }
     this.snapshot.set(result.snapshot);
     const event = result.snapshot.events[0];
     if (event !== undefined) {
       this.statusMessage.set(describeEvent(event));
     }
+    return true;
   }
 
   private routeIssues(issues: readonly ValidationIssue[]): void {
     for (const issue of issues) {
-      if (issue.field === 'key') {
-        this.addKeyError.set(issue.message);
-      } else if (issue.field === 'size') {
-        this.addSizeError.set(issue.message);
-      } else if (issue.field === 'access') {
-        this.accessError.set(issue.message);
-      } else {
-        this.capacityError.set(issue.message);
-      }
+      this.errors.update((errors) => ({ ...errors, [issue.field]: issue.message }));
     }
   }
 
   private clearErrors(): void {
-    this.addKeyError.set(null);
-    this.addSizeError.set(null);
-    this.accessError.set(null);
-    this.capacityError.set(null);
+    this.errors.set({ key: null, size: null, access: null, capacity: null });
   }
 }
