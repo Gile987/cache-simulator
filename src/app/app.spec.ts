@@ -2,6 +2,7 @@ import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './app';
 import * as engine from './cache-engine/engine';
+import { TOUR_STEPS } from './components/tutorial-tour/tutorial-steps';
 
 function requireElement<T extends Element>(root: HTMLElement, selector: string): T {
   const element = root.querySelector(selector);
@@ -57,6 +58,10 @@ describe('App', () => {
     fixture = TestBed.createComponent(App);
     root = fixture.nativeElement as HTMLElement;
     fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    clickButton(root, '[data-testid="tour-skip"]');
+    fixture.detectChanges();
   });
 
   afterEach(() => {
@@ -66,6 +71,86 @@ describe('App', () => {
   it('renders the playground heading and an empty state', () => {
     expect(root.querySelector('h1')?.textContent).toContain('Cache Eviction Playground');
     expect(root.querySelector('[data-testid="empty-state"]')).not.toBeNull();
+  });
+
+  it('preserves manual work, invalid drafts, errors, and status through a complete and skipped replay', async () => {
+    prepareOperation(root);
+    submitOperation(root, 'add');
+    fixture.detectChanges();
+    prepareOperation(root);
+    submitOperation(root, 'add');
+    fixture.detectChanges();
+    const before = {
+      snapshot: fixture.componentInstance['snapshot'](),
+      drafts: fixture.componentInstance['drafts'](),
+      errors: fixture.componentInstance['errors'](),
+      status: fixture.componentInstance['statusMessage'](),
+    };
+    const saved = structuredClone(before);
+    expect(before.errors.key).toContain('already in the cache');
+    const publish = vi.spyOn(fixture.componentInstance['snapshot'], 'set');
+
+    clickButton(root, '[data-tour-launch]');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    for (const _step of TOUR_STEPS) {
+      clickButton(root, '[data-testid="tour-next"]');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+    clickButton(root, '[data-tour-launch]');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    clickButton(root, '[data-testid="tour-skip"]');
+    fixture.detectChanges();
+
+    expect(publish).not.toHaveBeenCalled();
+    expect(fixture.componentInstance['snapshot']()).toBe(before.snapshot);
+    expect(fixture.componentInstance['drafts']()).toBe(before.drafts);
+    expect(fixture.componentInstance['errors']()).toBe(before.errors);
+    expect(fixture.componentInstance['statusMessage']()).toBe(before.status);
+    expect(before).toEqual(saved);
+  });
+
+  it('replays during a guided example without advancing, resetting, or enabling its controls', async () => {
+    clickButton(root, '[data-testid="load-example-button"]');
+    fixture.detectChanges();
+    for (let index = 0; index < 2; index++) {
+      clickButton(root, '[data-testid="next-step-button"]');
+      fixture.detectChanges();
+    }
+    const before = fixture.componentInstance['snapshot']();
+    const status = fixture.componentInstance['statusMessage']();
+    const publish = vi.spyOn(fixture.componentInstance['snapshot'], 'set');
+    clickButton(root, '[data-tour-launch]');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    clickButton(root, '[data-testid="tour-next"]');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(root.querySelector('.context-note')?.textContent).toContain(
+      'manual controls are disabled',
+    );
+    clickButton(root, '[data-testid="tour-skip"]');
+    fixture.detectChanges();
+
+    expect(publish).not.toHaveBeenCalled();
+    expect(fixture.componentInstance['snapshot']()).toBe(before);
+    expect(fixture.componentInstance['statusMessage']()).toBe(status);
+    expect(fixture.componentInstance['exampleCursor']()).toBe(2);
+    expect(fixture.componentInstance['exampleActive']()).toBe(true);
+    expect(requireElement<HTMLInputElement>(root, '[data-testid="item-key-input"]').disabled).toBe(
+      true,
+    );
+    clickButton(root, '[data-testid="next-step-button"]');
+    fixture.detectChanges();
+    expect(fixture.componentInstance['exampleCursor']()).toBe(3);
+    expect(root.querySelectorAll('[data-testid="card"]')).toHaveLength(3);
   });
 
   it('adds an item and reflects usage and statistics', () => {
@@ -906,5 +991,38 @@ describe('App', () => {
     expect(requireElement(root, '[data-testid="hits"]').textContent?.trim()).toBe('4');
     expect(announce).toHaveBeenCalledOnce();
     expect(requireElement(root, '[data-testid="status"]').textContent).toContain('Added "D"');
+  });
+});
+
+describe('tutorial introduction', () => {
+  it('opens automatically with unique targets on an empty page and supports replay', async () => {
+    await TestBed.configureTestingModule({ imports: [App] }).compileComponents();
+    const fixture = TestBed.createComponent(App);
+    const root = fixture.nativeElement as HTMLElement;
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(requireElement<HTMLDialogElement>(root, 'dialog').open).toBe(true);
+    expect(root.querySelector('[data-step="welcome"]')).not.toBeNull();
+    for (const step of TOUR_STEPS) {
+      if (step.kind === 'target') {
+        expect(root.querySelectorAll(`[data-tour="${step.target}"]`)).toHaveLength(1);
+      }
+    }
+    expect(
+      root.querySelector('[data-tour="cache-items"] [data-testid="empty-state"]'),
+    ).not.toBeNull();
+    clickButton(root, '[data-testid="tour-skip"]');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(requireElement<HTMLDialogElement>(root, 'dialog').open).toBe(false);
+    clickButton(root, '[data-tour-launch]');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(root.querySelector('[data-step="welcome"]')).not.toBeNull();
+    clickButton(root, '[data-testid="tour-skip"]');
+    fixture.detectChanges();
   });
 });

@@ -14,6 +14,7 @@ import { GUIDED_CAPACITY, GUIDED_STEPS } from './cache-engine/guided-example';
 import { parseIntegerField, validateKey } from './cache-engine/validation';
 import { CacheView } from './components/cache-view/cache-view';
 import { EventLog } from './components/event-log/event-log';
+import { TutorialTour } from './components/tutorial-tour/tutorial-tour';
 import { PlaygroundControls } from './components/playground-controls/playground-controls';
 import type {
   ControlDrafts,
@@ -32,7 +33,7 @@ const DRAFT_ERROR_FIELDS: Readonly<Record<keyof ControlDrafts, ValidationField>>
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CacheView, EventLog, PlaygroundControls],
+  imports: [CacheView, EventLog, PlaygroundControls, TutorialTour],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
@@ -73,6 +74,11 @@ export class App {
   protected readonly canEditCapacity = computed(
     () => this.state().step === 0 && !this.exampleActive(),
   );
+  protected readonly tourContext = computed(() => ({
+    capacityEditable: this.canEditCapacity(),
+    exampleActive: this.exampleActive(),
+    cacheEmpty: this.state().entries.length === 0,
+  }));
   protected readonly exampleComplete = computed(
     () => this.exampleActive() && this.exampleCursor() >= GUIDED_STEPS.length,
   );
