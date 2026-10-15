@@ -411,6 +411,55 @@ describe('App', () => {
     expect(root.querySelector('[data-testid="log-empty"]')).not.toBeNull();
   });
 
+  it('reorders the displayed eviction priority and metrics when the strategy changes', () => {
+    const addItem = (key: string): void => {
+      setInputValue(requireElement<HTMLInputElement>(root, '[data-testid="item-key-input"]'), key);
+      setInputValue(requireElement<HTMLInputElement>(root, '[data-testid="item-size-input"]'), '3');
+      clickButton(root, '[data-testid="add-button"]');
+      fixture.detectChanges();
+    };
+    const accessItem = (key: string): void => {
+      setInputValue(
+        requireElement<HTMLInputElement>(root, '[data-testid="access-key-input"]'),
+        key,
+      );
+      clickButton(root, '[data-testid="access-button"]');
+      fixture.detectChanges();
+    };
+    const changeStrategy = (strategy: 'FIFO' | 'LRU' | 'LFU'): void => {
+      const select = requireElement<HTMLSelectElement>(root, '#strategy');
+      select.value = strategy;
+      select.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+    };
+    const priorityKeys = (): (string | null)[] =>
+      [...root.querySelectorAll<HTMLElement>('[data-testid="priority-list"] .priority-key')].map(
+        (element) => element.textContent,
+      );
+    const firstMetric = (): string =>
+      requireElement(root, '[data-testid="priority-list"] .metric').textContent ?? '';
+
+    addItem('A');
+    addItem('B');
+    accessItem('B');
+    accessItem('B');
+    accessItem('A');
+
+    expect(priorityKeys()).toEqual(['A', 'B']);
+    expect(firstMetric()).toBe('inserted step 1');
+
+    changeStrategy('LRU');
+    expect(priorityKeys()).toEqual(['B', 'A']);
+    expect(firstMetric()).toBe('last access step 4');
+
+    changeStrategy('LFU');
+    expect(priorityKeys()).toEqual(['A', 'B']);
+    expect(firstMetric()).toBe('1 access');
+    expect(
+      requireElement(root, '[data-testid="priority-list"] .priority-item .badge').textContent,
+    ).toBe('next to evict');
+  });
+
   it('runs the guided example one step at a time and disables manual controls', () => {
     clickButton(root, '[data-testid="load-example-button"]');
     fixture.detectChanges();
