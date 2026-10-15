@@ -36,7 +36,7 @@ Tests and formatting use the installed CLI-generated Vitest and Prettier setups.
 
 ### Meet Byte and take a tour
 
-Byte, the cache keeper, welcomes you whenever the page loads. Choose **Start tour** to follow 14 short explanations of the controls and results. The current area stays clear with a border while the surrounding page darkens. The `$$` badge is temporary artwork for Byte; capacity still represents abstract space, not money.
+Byte, the cache keeper, welcomes you whenever the page loads. Choose **Start tour** to follow 14 short explanations of the controls and results. The current area stays clear with a border while the surrounding page darkens. Byte uses the OpenMoji robot face; capacity represents abstract space, not money.
 
 Use **Back** and **Next** at your own pace, or leave with **Skip tour**, **Finish tour**, or Escape. **Take a tour** in the header restarts the introduction. The tour preserves your current entries, drafts, validation feedback, statistics, and guided-example progress. Highlighted controls are inactive during the modal tour; you can try them after closing it.
 
@@ -126,6 +126,10 @@ First check Byte's welcome and choose **Skip tour** before following the simulat
 - Type-only dependencies use `import type` or inline `type` modifiers, while components, Angular APIs, engine functions, and constants retain runtime imports. The shared configuration enables [`verbatimModuleSyntax`](https://www.typescriptlang.org/tsconfig/verbatimModuleSyntax.html) with the existing `module: preserve` setup, making import erasure explicit and requiring type-only imports for interfaces and aliases. Compatibility is verified through application and test compilation, the Angular production build, and the test suite.
 - Supported strategies are declared once as a readonly `STRATEGIES` tuple, and the `Strategy` union is derived from it, so the type, the dropdown order, and the typed descriptions cannot drift apart. The numeric and key inputs reuse the shared validation constants (`MIN_VALUE`, `MAX_VALUE`, `MAX_KEY_LENGTH`) instead of repeating their literals, so changing a limit updates validation and the rendered controls together.
 - Runtime dependencies are limited to the Angular packages the app imports (`core`, `common`, `compiler`, `platform-browser`), `rxjs`, and `tslib`. The unused `@angular/router` and `@angular/forms` packages were removed after the native-form decision; `@angular/common` and `@angular/compiler` remain because they are required and optional peers of the packages the app uses. `package.json` adds `format`, `format:check`, and `test:run` scripts so formatting and one-shot tests reuse the existing Prettier and Vitest tooling.
+
+## Artwork credit
+
+Byte's robot face is [Robot (U+1F916) by OpenMoji](https://github.com/hfg-gmuend/openmoji/blob/15.1.0/color/svg/1F916.svg), from release 15.1.0, licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). The SVG is served locally and its artwork is unmodified. The tour includes a visible credit; the [asset attribution](public/assets/openmoji/ATTRIBUTION.md) and [upstream license](public/assets/openmoji/LICENSE.txt) are included with the app.
 
 ## Limitations and deferred work
 
