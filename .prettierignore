@@ -1,0 +1,8 @@
+# Build output and tool caches (also covered by .gitignore)
+/dist
+/.angular
+/.history
+/coverage
+
+# Historical planning document that is not part of the app
+cache-simulator-plan.md

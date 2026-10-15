@@ -19,10 +19,13 @@ The lockfile (`package-lock.json`) is committed so installs are reproducible.
 npm install          # install dependencies
 npm start            # dev server at http://localhost:4200
 npm run build        # production build into dist/
-npm test -- --watch=false   # run the test suite once
+npm test             # Vitest in watch mode
+npm run test:run     # run the test suite once
+npm run format       # format supported files with Prettier
+npm run format:check # verify formatting without writing
 ```
 
-`npm test` uses the CLI-generated Vitest setup.
+Tests and formatting use the installed CLI-generated Vitest and Prettier setups.
 
 ## How to use it
 
@@ -75,7 +78,7 @@ All engine commands, including Reset and guided steps, use one execution path in
 
 ## Tests
 
-`npx ng test --watch=false` runs:
+`npm run test:run` (or `npx ng test --watch=false`) runs:
 
 - **Engine tests** — insertion without eviction, exact fits, multi-item eviction order, rejected operations leaving state untouched, hit/miss behavior, all three priority policies and their explicit comparator tie-breakers (including key comparison), strategy-specific eviction reasons, fresh metadata after re-insertion, strategy switches, trimmed and case-sensitive keys, `__proto__` as an ordinary key, the guided example under every strategy, zero-access hit rate, capacity invariants, input immutability including during a real eviction, the 50-event log cap, explicit command outcomes with rejection recovery and event-free success, and unknown commands and strategies throwing without changing caller-owned state.
 - **UI tests** — controls-component requests, raw draft edits and input immutability, submission cancellation, disabled controls, stable field-error descriptions with no references to absent errors, and parent integration for add/access flows, simultaneous Add errors, independent error clearing and description removal on editing, capacity locking and reset, rejected-draft recovery, duplicate-key and oversized-item revalidation, card access, the displayed eviction priority and its metrics after strategy changes, no-op status handling, and the guided-example step controls including rejected-step retry.
@@ -109,6 +112,7 @@ Browser checks are performed manually by the user; automated verification uses t
 - Both application and test TypeScript configurations inherit `noUnusedLocals`, `noUnusedParameters`, and `noUncheckedIndexedAccess`. These checks catch unused declarations and require array lookups to account for missing entries. Access retrieves and guards the resident entry before updating its metadata, preserving the existing hit and miss behavior without type assertions.
 - Type-only dependencies use `import type` or inline `type` modifiers, while components, Angular APIs, engine functions, and constants retain runtime imports. The shared configuration enables [`verbatimModuleSyntax`](https://www.typescriptlang.org/tsconfig/verbatimModuleSyntax.html) with the existing `module: preserve` setup, making import erasure explicit and requiring type-only imports for interfaces and aliases. Compatibility is verified through application and test compilation, the Angular production build, and the test suite.
 - Supported strategies are declared once as a readonly `STRATEGIES` tuple, and the `Strategy` union is derived from it, so the type, the dropdown order, and the typed descriptions cannot drift apart. The numeric and key inputs reuse the shared validation constants (`MIN_VALUE`, `MAX_VALUE`, `MAX_KEY_LENGTH`) instead of repeating their literals, so changing a limit updates validation and the rendered controls together.
+- Runtime dependencies are limited to the Angular packages the app imports (`core`, `common`, `compiler`, `platform-browser`), `rxjs`, and `tslib`. The unused `@angular/router` and `@angular/forms` packages were removed after the native-form decision; `@angular/common` and `@angular/compiler` remain because they are required and optional peers of the packages the app uses. `package.json` adds `format`, `format:check`, and `test:run` scripts so formatting and one-shot tests reuse the existing Prettier and Vitest tooling.
 
 ## Limitations and deferred work
 
