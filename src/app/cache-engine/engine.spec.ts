@@ -213,6 +213,31 @@ describe('validation', () => {
     expect(keysOf(snapshot.state)).toEqual(['__proto__']);
     expect(snapshot.state.hits).toBe(1);
   });
+
+  it('stores trimmed keys and treats a padded duplicate as already resident', () => {
+    const before = runAll([
+      { type: 'add', key: '  A  ', size: 3 },
+      { type: 'access', key: ' A ' },
+    ]);
+    expect(keysOf(before.state)).toEqual(['A']);
+    expect(before.state.hits).toBe(1);
+    expect(before.state.misses).toBe(0);
+
+    const duplicate = applyCommand(before.state, { type: 'add', key: 'A', size: 3 });
+    expect(duplicate.ok).toBe(false);
+    expect(before.state.step).toBe(2);
+  });
+
+  it('matches keys case-sensitively', () => {
+    const snapshot = runAll([
+      { type: 'add', key: 'A', size: 3 },
+      { type: 'access', key: 'a' },
+      { type: 'add', key: 'a', size: 3 },
+    ]);
+    expect(keysOf(snapshot.state)).toEqual(['A', 'a']);
+    expect(snapshot.state.hits).toBe(0);
+    expect(snapshot.state.misses).toBe(1);
+  });
 });
 
 describe('access', () => {
@@ -331,6 +356,33 @@ describe('reset and immutability', () => {
     expect(before.state.entries).toBe(entriesBefore);
     expect(before.state.entries[0]).toBe(firstBefore);
     expect(keysOf(before.state)).toEqual(['A', 'B']);
+  });
+
+  it('does not mutate the caller-owned state while actually evicting', () => {
+    const before = runAll([
+      { type: 'add', key: 'A', size: 3 },
+      { type: 'add', key: 'B', size: 3 },
+      { type: 'add', key: 'C', size: 3 },
+    ]);
+    const entriesBefore = before.state.entries;
+    const saved = structuredClone(before);
+
+    const outcome = runCommand(before, { type: 'add', key: 'D', size: 6 });
+
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) {
+      throw new Error('Expected command success');
+    }
+    expect(outcome.event?.kind).toBe('insert');
+    if (outcome.event?.kind !== 'insert') {
+      throw new Error('Expected an insert event');
+    }
+    expect(outcome.event.evictions.map((eviction) => eviction.key)).toEqual(['A', 'B']);
+    expect(before).toEqual(saved);
+    expect(before.state.entries).toBe(entriesBefore);
+    expect(keysOf(before.state)).toEqual(['A', 'B', 'C']);
+    expect(before.state.step).toBe(3);
+    expect(before.state.evictions).toBe(0);
   });
 
   it('clears state but keeps strategy and capacity on reset', () => {
