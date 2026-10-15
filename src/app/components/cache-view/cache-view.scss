@@ -12,6 +12,12 @@
   background: var(--panel);
 }
 
+.usage-region {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
 .section-head {
   display: flex;
   align-items: baseline;

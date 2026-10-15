@@ -34,6 +34,14 @@ Tests and formatting use the installed CLI-generated Vitest and Prettier setups.
 3. Watch the segmented capacity bar, the insertion-order item cards, the separate "Eviction priority" list, the statistics, and the event log.
 4. Use **Load guided example** for a deterministic eight-step scenario, then advance it one step at a time with **Next step**.
 
+### Meet Byte and take a tour
+
+Byte, the cache keeper, welcomes you whenever the page loads. Choose **Start tour** to follow 14 short explanations of the controls and results. The current area stays clear with a border while the surrounding page darkens. The `$$` badge is temporary artwork for Byte; capacity still represents abstract space, not money.
+
+Use **Back** and **Next** at your own pace, or leave with **Skip tour**, **Finish tour**, or Escape. **Take a tour** in the header restarts the introduction. The tour preserves your current entries, drafts, validation feedback, statistics, and guided-example progress. Highlighted controls are inactive during the modal tour; you can try them after closing it.
+
+On narrow screens, the explanation moves into a bottom sheet and its text can scroll. On extremely short screens, the explanation takes priority over a spotlight that cannot fit. Tab into the explanation to scroll it with the keyboard. If the browser cannot open a native modal dialog, the same content appears as ordinary closable help without blocking the simulator. Dismissal is not stored, so refreshing shows the welcome again.
+
 ## Simulation conventions
 
 - **Logical time.** A deterministic step counter starts at 0 and increments once per accepted insertion, explicit access (including a miss), or actual strategy change. Invalid operations and re-selecting the current strategy are no-ops.
@@ -66,6 +74,7 @@ Capacity is 10 and the selected strategy is retained. The eight steps are: Add A
 - `src/app/components/cache-view/` — segmented capacity bar, insertion-order item cards, and the eviction priority list.
 - `src/app/components/event-log/` — typed event presentation.
 - `src/app/components/playground-controls/` — standalone Configuration and controls panel with native Add and Access forms, component-scoped styles, typed signal inputs, and typed draft-edit and operation outputs.
+- `src/app/components/tutorial-tour/` — reusable Byte tour, typed step content, scoped target markers, pure spotlight geometry, and modal lifecycle with responsive positioning and focus restoration.
 - `src/app/app.ts` — container that owns simulation state, raw form drafts, field errors, validation, and example progress, executes commands, and derives usage, statistics, and priority.
 
 State is stored once and derived values (used capacity, hit rate, priority order) are computed rather than duplicated. The engine is written with straightforward sorting and loops because capacity is deliberately small; linked lists and heaps would add complexity for no benefit.
@@ -82,10 +91,13 @@ All engine commands, including Reset and guided steps, use one execution path in
 
 - **Engine tests** — insertion without eviction, exact fits, multi-item eviction order, rejected operations leaving state untouched, hit/miss behavior, all three priority policies and their explicit comparator tie-breakers (including key comparison), strategy-specific eviction reasons, fresh metadata after re-insertion, strategy switches, trimmed and case-sensitive keys, `__proto__` as an ordinary key, the guided example under every strategy, zero-access hit rate, capacity invariants, input immutability including during a real eviction, the 50-event log cap, explicit command outcomes with rejection recovery and event-free success, and unknown commands and strategies throwing without changing caller-owned state.
 - **UI tests** — controls-component requests, raw draft edits and input immutability, submission cancellation, disabled controls, stable field-error descriptions with no references to absent errors, and parent integration for add/access flows, simultaneous Add errors, independent error clearing and description removal on editing, capacity locking and reset, rejected-draft recovery, duplicate-key and oversized-item revalidation, card access, the displayed eviction priority and its metrics after strategy changes, no-op status handling, and the guided-example step controls including rejected-step retry.
+- **Tutorial tests** — automatic welcome, every step and target, Back/Next/Skip/Finish/replay, dismissal and focus recovery, missing targets, guided-mode and empty-state explanations, listener/observer cleanup, unsupported/refused dialog recovery, stale close events, coalesced measurements, and preservation of manual and guided simulation state. Pure geometry cases cover placement on all four sides, clipping, visible-viewport offsets, narrow and short screens, and invalid measurements. Dialog and layout mocks verify orchestration; native modality, real focus containment, and visual alignment require the manual browser checks below.
 
 ### Manual browser checks
 
 Browser checks are performed manually by the user; automated verification uses the existing unit tests and production build.
+
+First check Byte's welcome and choose **Skip tour** before following the simulator checks below. For the complete tutorial checks, use the [tutorial manual checklist](TUTORIAL-PLAN.md#10-manual-browser-checklist-for-the-user). In particular, replay after entering drafts or advancing the guided example; verify the highlighted region and explanation at desktop and 390 px widths, at 200% zoom, and in a short landscape viewport; check Tab/Shift+Tab containment and Escape; and confirm no highlighted Add, Reset, or Load button can be activated through the overlay.
 
 1. Run `npm start` and open `http://localhost:4200/`. Check the Configuration and controls panel at desktop width and a narrow width around 390 px. Fields and buttons should remain usable without horizontal scrolling. Use Tab to confirm visible keyboard focus.
 2. Enter capacity `0`, key `A`, and size `3`. Press Enter in the Add key field. Expect a capacity error, retained drafts, no cache entries, and no logged operations. Correct capacity to `10` and press Enter in the size field. Expect one item and one Step 1 event, cleared Add fields, locked capacity, and no page reload.
@@ -105,6 +117,7 @@ Browser checks are performed manually by the user; automated verification uses t
 - One logical step counter replaces wall-clock time so runs are deterministic and reproducible.
 - Signals with OnPush change detection and `@if`/`@for` with stable tracking keys keep rendering predictable.
 - Native HTML controls and SCSS avoid UI, chart, canvas, and animation dependencies.
+- Byte's tour uses one native modal dialog with a transparent backdrop and four dim panels around the measured target. Dedicated `data-tour` markers keep targeting independent of presentation classes and tests. Only tutorial view state changes; the engine and command path are reused without tutorial-specific behavior. Render callbacks and coalesced animation frames schedule measurement; observers, listeners, temporary scroll styles, and focus are cleaned up on dismissal and destruction. The component reserves temporary document space so even targets near the page bottom can scroll above the explanation sheet.
 - Add and Access use separate native forms with Angular submit listeners that prevent page navigation. Signal drafts retain raw input strings for custom validation; `novalidate` lets the app show its own field errors for invalid numeric values.
 - Controls use typed native template references to pass raw input `.value` strings and the strategy select element to their handlers. The draft handler retains disabled-field guards, and strategy changes retain validation and selection restoration. This avoids generic event-target parsing while preserving empty and numeric drafts, field errors, and parent-owned state.
 - Event formatting is shared: the framework-free engine owns the access, strategy, unit, and usage descriptions, and the event log reuses them for its summaries while still rendering every eviction as its own structured list item. This keeps the status line, log summary, and pluralization consistent (a one-unit item or eviction reads `1 unit`) without coupling engine code to Angular.

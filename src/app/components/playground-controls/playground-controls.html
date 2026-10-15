@@ -1,7 +1,7 @@
 <section class="panel" aria-labelledby="config-heading">
   <h2 id="config-heading">Configuration and controls</h2>
 
-  <div class="field">
+  <div class="field" data-tour="strategy">
     <label for="strategy">Strategy</label>
     <select
       #strategySelect
@@ -17,7 +17,7 @@
     <p class="help">{{ strategyInfo() }}</p>
   </div>
 
-  <div class="field">
+  <div class="field" data-tour="capacity">
     <label for="capacity">Capacity (abstract units)</label>
     <input
       #capacityInput
@@ -45,6 +45,7 @@
   <form
     aria-labelledby="add-heading"
     data-testid="add-form"
+    data-tour="add-item"
     novalidate
     (submit)="$event.preventDefault(); requestOperation({ type: 'add' })"
   >
@@ -101,6 +102,7 @@
   <form
     aria-labelledby="access-heading"
     data-testid="access-form"
+    data-tour="access-item"
     novalidate
     (submit)="$event.preventDefault(); requestOperation({ type: 'access' })"
   >
@@ -139,12 +141,18 @@
   </form>
 
   <div class="actions">
-    <button type="button" data-testid="reset-button" (click)="requestOperation({ type: 'reset' })">
+    <button
+      type="button"
+      data-testid="reset-button"
+      data-tour="reset"
+      (click)="requestOperation({ type: 'reset' })"
+    >
       Reset simulation
     </button>
     <button
       type="button"
       data-testid="load-example-button"
+      data-tour="load-example"
       (click)="requestOperation({ type: 'loadExample' })"
     >
       Load guided example

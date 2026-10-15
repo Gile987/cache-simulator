@@ -2,63 +2,65 @@
 @let queue = priority();
 
 <section class="cache-view" aria-labelledby="cache-heading">
-  <header class="section-head">
-    <h2 id="cache-heading">Cache contents</h2>
-    <p class="usage" data-testid="usage">{{ used() }} / {{ current.capacity }} units</p>
-  </header>
+  <div class="usage-region" data-tour="cache-usage">
+    <header class="section-head">
+      <h2 id="cache-heading">Cache contents</h2>
+      <p class="usage" data-testid="usage">{{ used() }} / {{ current.capacity }} units</p>
+    </header>
 
-  <div class="capacity-bar" role="img" [attr.aria-label]="barLabel()">
-    @for (segment of segments(); track segment.key) {
-      <span
-        class="segment"
-        [style.width.%]="segment.percent"
-        [style.background-color]="segment.color"
-      ></span>
+    <div class="capacity-bar" role="img" [attr.aria-label]="barLabel()">
+      @for (segment of segments(); track segment.key) {
+        <span
+          class="segment"
+          [style.width.%]="segment.percent"
+          [style.background-color]="segment.color"
+        ></span>
+      }
+    </div>
+  </div>
+  <div data-tour="cache-items">
+    @if (current.entries.length === 0) {
+      <p class="empty" data-testid="empty-state">The cache is empty. Add an item to get started.</p>
+    } @else {
+      <ul class="cards">
+        @for (entry of current.entries; track entry.key) {
+          <li class="card" data-testid="card">
+            <div class="card-head">
+              <span class="card-key">{{ entry.key }}</span>
+              <button
+                type="button"
+                class="ghost"
+                [disabled]="!interactive()"
+                [attr.aria-label]="'Access ' + entry.key"
+                (click)="access.emit(entry.key)"
+              >
+                Access
+              </button>
+            </div>
+            <dl class="meta">
+              <div>
+                <dt>Size</dt>
+                <dd>{{ entry.size }} units</dd>
+              </div>
+              <div>
+                <dt>Inserted</dt>
+                <dd>step {{ entry.insertionStep }}</dd>
+              </div>
+              <div>
+                <dt>Last access</dt>
+                <dd>step {{ entry.lastAccessStep }}</dd>
+              </div>
+              <div>
+                <dt>Accesses</dt>
+                <dd>{{ entry.accessCount }}</dd>
+              </div>
+            </dl>
+          </li>
+        }
+      </ul>
     }
   </div>
-
-  @if (current.entries.length === 0) {
-    <p class="empty" data-testid="empty-state">The cache is empty. Add an item to get started.</p>
-  } @else {
-    <ul class="cards">
-      @for (entry of current.entries; track entry.key) {
-        <li class="card" data-testid="card">
-          <div class="card-head">
-            <span class="card-key">{{ entry.key }}</span>
-            <button
-              type="button"
-              class="ghost"
-              [disabled]="!interactive()"
-              [attr.aria-label]="'Access ' + entry.key"
-              (click)="access.emit(entry.key)"
-            >
-              Access
-            </button>
-          </div>
-          <dl class="meta">
-            <div>
-              <dt>Size</dt>
-              <dd>{{ entry.size }} units</dd>
-            </div>
-            <div>
-              <dt>Inserted</dt>
-              <dd>step {{ entry.insertionStep }}</dd>
-            </div>
-            <div>
-              <dt>Last access</dt>
-              <dd>step {{ entry.lastAccessStep }}</dd>
-            </div>
-            <div>
-              <dt>Accesses</dt>
-              <dd>{{ entry.accessCount }}</dd>
-            </div>
-          </dl>
-        </li>
-      }
-    </ul>
-  }
-
-  <section class="priority" aria-labelledby="priority-heading">
+  <section data-tour="eviction-priority" class="priority" aria-labelledby="priority-heading">
     <h3 id="priority-heading">Eviction priority</h3>
     <p class="hint">
       Evaluated only if an insertion needs room. The first item would be evicted first; nothing is

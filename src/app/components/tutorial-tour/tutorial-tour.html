@@ -1,0 +1,86 @@
+<dialog
+  #tourDialog
+  class="tour"
+  [class.fallback]="fallback()"
+  [attr.aria-modal]="fallback() ? null : 'true'"
+  aria-labelledby="tour-title"
+  (cancel)="dismiss($event)"
+  (close)="nativeClosed()"
+  (keydown.escape)="dismiss($event)"
+>
+  @if (step(); as current) {
+    @if (!fallback()) {
+      @if (layout(); as placement) {
+        @for (panel of placement.panels; track $index) {
+          <div
+            class="shade"
+            aria-hidden="true"
+            [style.left.px]="panel.x"
+            [style.top.px]="panel.y"
+            [style.width.px]="panel.width"
+            [style.height.px]="panel.height"
+          ></div>
+        }
+        @if (placement.spotlight; as hole) {
+          <div
+            class="spotlight"
+            aria-hidden="true"
+            [style.left.px]="hole.x"
+            [style.top.px]="hole.y"
+            [style.width.px]="hole.width"
+            [style.height.px]="hole.height"
+          ></div>
+        }
+      } @else {
+        <div class="shade initial" aria-hidden="true"></div>
+      }
+    }
+    <section
+      #tourCard
+      class="tour-card"
+      [class.positioned]="layout() !== null && !fallback()"
+      [attr.data-placement]="layout()?.mode ?? 'centered'"
+      [attr.data-step]="current.id"
+      [style.left.px]="fallback() ? null : layout()?.card?.x"
+      [style.top.px]="fallback() ? null : layout()?.card?.y"
+      [style.width.px]="fallback() ? null : layout()?.card?.width"
+      [style.max-height.px]="fallback() ? null : layout()?.card?.height"
+    >
+      <header class="tour-head">
+        <span class="mascot" aria-hidden="true">$$</span>
+        <div>
+          <p class="speaker">Byte · Your cache guide</p>
+          <p class="progress">Step {{ (activeIndex() ?? 0) + 1 }} of {{ count }}</p>
+        </div>
+      </header>
+      <div #tourCopy class="tour-copy" tabindex="0" role="region" aria-labelledby="tour-title">
+        <h2 #tourHeading id="tour-title" tabindex="-1">{{ current.title }}</h2>
+        @for (paragraph of current.paragraphs; track $index) {
+          <p>{{ paragraph }}</p>
+        }
+        @for (note of notes(); track note) {
+          <p class="context-note">{{ note }}</p>
+        }
+      </div>
+      <footer class="tour-actions">
+        <button type="button" class="skip" data-testid="tour-skip" (click)="dismiss()">
+          Skip tour
+        </button>
+        <div class="navigation">
+          @if (activeIndex() !== 0) {
+            <button type="button" data-testid="tour-back" (click)="back()">Back</button>
+          }
+          <button type="button" class="primary" data-testid="tour-next" (click)="next()">
+            {{
+              activeIndex() === 0
+                ? 'Start tour'
+                : activeIndex() === count - 1
+                  ? 'Finish tour'
+                  : 'Next'
+            }}
+          </button>
+        </div>
+      </footer>
+    </section>
+  }
+</dialog>
